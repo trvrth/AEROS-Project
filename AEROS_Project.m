@@ -13,7 +13,6 @@ EarthIC = [6.82500E+07; 1.30864E+08; 1.81329E+04; -2.67639E+01; 1.38981E+01; -9.
 
 DidymosIC = [-2.39573E+08; -2.35661E+08;  9.54384E+06; 1.24732E+01; -9.74427E+00; -8.78661E-01];
 
-%DARTIC = [6.82409E+07; 1.30854E+08; 1.52197E+04; -3.06997E+01; 8.11796E+00; 3.95772E+00];
 DARTIC = DidymosIC;
 
 % Time Range
@@ -23,12 +22,11 @@ DART_t = 0:ssize:2.6e7;
 
 %created function script called propagate_2BP.m, is basic function that
 %splits the table values into two useable variables, r and v. Then
-%calculates the acceleration through the formula at the bottom of lecture
-%2, a = -mu/r^3 * rv, rv(being the r vector)
+%calculates the acceleration through the formula at the bottom of lecture 2, a = -mu/r^3 * rv, rv(being the r vector)
 [Earth_t,Earth_RV] = ode45(@propagate_2BP, Earth_t, EarthIC, options, mu, 0);
 [Didymos_t, Didymos_RV] = ode45(@propagate_2BP, Didymos_t, DidymosIC, options, mu, 0);
 [Didymos_t_aft, Didymos_RV_aft] = ode45(@propagate_2BP, Didymos_t, DidymosIC, options, mu, thrust_mag);
-%[DART_t, DART_RV] = ode45(@propagate_2BP, DART_t, DARTIC, options, mu, 0);
+
 
 % Plotting Orbits
 figure; % can add color to each plotted line, using 'b', 'r', 'g', etc.
@@ -36,8 +34,7 @@ plot3(Earth_RV(:,1), Earth_RV(:,2), Earth_RV(:,3), 'b');
 hold on;
 plot3(Didymos_RV(:,1), Didymos_RV(:,2), Didymos_RV(:,3), 'r');
 hold on;
-%plot3(DART_RV(:,1), DART_RV(:,2), DART_RV(:,3), 'g');
-%hold on;
+
 
 % Plot Labels
 

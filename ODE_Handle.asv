@@ -1,4 +1,4 @@
-function out = ODE_Handle(rA0, vA0, DV, thrust, dt, ssize)
+function out = ODE_Handle(rA0, vA0, DV, thrust, dt, t_final)
  % rA0 and vA0 come from the inital data
 % DV is calculated before hand and imported into function
 % Thrust will stay constant for now
@@ -9,7 +9,7 @@ options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
 
 t_tot = 0;
 
-for i = 1:ssize
+for i = 1:t_final
 
 	[~ , RV] = ode45(@propagate_2BP, [0 dt], [rA0; vA0], options, mu, thrust);
 	r_Af = RV(1:3);
