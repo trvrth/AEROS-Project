@@ -4,6 +4,8 @@ function out = IBFraction(R_A, d, theta)
 % d is distance between spacecraft and asteroid
 % theta is ion beam divergence angle
 
-out = min([1 R_A/(d*tand(theta))]);
+beam_radius = d*tand(theta);
+frac = (R_A/beam_radius)^2;
+out = min([1 frac]);
 
 return
