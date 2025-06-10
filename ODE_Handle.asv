@@ -1,4 +1,4 @@
-function [t_all, r_all, v_all, DV_tot] = ODE_Handle(rA0, vA0, thrust, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta)
+function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta)
 % rA0 and vA0 come from the inital data
 % Thrust will stay constant for now
 % dt is the stepsize
@@ -15,6 +15,8 @@ tol = 1e-12; % acceptable tolerance
 options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
 g = 0.00980665; % km/s^2
 
+thrust = thrust*array_num;
+
 thrust = thrust / 1000; % to convert to kg*km/s^2 (kN)
 
 mdot = thrust / (g * Isp); % mass flow rate of the ion thruster
@@ -29,6 +31,13 @@ DV_tot = 0;
 r_all = [];
 v_all = [];
 t_all = [];
+a_all = [];
+e_all = [];
+RV_all = [];
+
+impulse_total = 0;
+
+DV = (thrust*dt)/(M_A + ((thrust/(g*Isp))*dt));
 
 % max_step = 1000;
 step = 0;
@@ -39,7 +48,7 @@ fprintf('[t = %6d s] mass_sc = %.2f kg, a_thrust = %.2e km/s^2\n', t_tot, mass_s
 while mass_fuel > 0 % && step < max_step
     
 
-	[~, RV] = ode45(@(t, y) propagate_2BP(t, y, mu, thrust, mass_sc), [0 dt], [rA0; vA0], options);
+	[~, RV] = ode45(@(t, y) propagate_2BP(t, y, mu, thrust, M_A, F), [0 dt], [rA0; vA0], options);
     
 
     if any(isnan(RV(end,:))) || any(isinf(RV(end,:)))
@@ -47,15 +56,30 @@ while mass_fuel > 0 % && step < max_step
         break;
     end
 
-    r_Af = RV(1:3);
-    v_Af = RV(4:6);
+    % r_Af = RV(1:3);
+    % v_Af = RV(4:6);
+    % 
+    % % Saves the Output of Function to be graphed in main file
+	% % RV_all = [RV_all; RV];
+    % r_all = [r_all; r_Af];
+    % v_all = [v_all; v_Af];
+    % t_all = [t_all; t_tot];
     
-    % Saves the Output of Function to be graphed in main file
-	r_all = [r_all; r_Af];
-    v_all = [v_all; v_Af];
-    t_all = [t_all; t_tot];
-    
-    
+    % Updates and Extracts all time steps
+    N = size(RV,1);
+    r_all = [r_all; RV(:,1:3)];
+    v_all = [v_all; RV(:,4:6)+DV];
+
+    t_span = linspace()
+    t_all = [t_all; t_tot]; % interpolate time steps  + (0:N-1)' * (dt/(N-1))
+
+    [a_step, e_step] = orbital_elements(RV(:,1:3), RV(:,4:6), mu);
+    a_all = [a_all; a_step];
+    e_all = [e_all; e_step];
+
+    r_Af = RV(end,1:3)';
+    v_Af = RV(end,4:6)';
+
     % Updating Mass of the Space Craft and the Fuel
     fuel_used = mdot * dt;
     mass_fuel = mass_fuel - fuel_used;
@@ -69,10 +93,11 @@ while mass_fuel > 0 % && step < max_step
         mass_sc = 2500;
     end
 
-    % UYΔV
-    DV_step = (F_fraction * F_beam_kN * dt) / M_A;
-    DV_tot = DV_tot + DV_step;
-	
+    % Updates ΔV imparted to asteroid
+    impulse_total = impulse_total + F * thrust * dt;
+    % DV_step = (F * thrust * dt) / M_A;
+    % DV_tot = DV_tot + DV_step;
+   
 
     % Updating State
 	rA0 = r_Af;
@@ -99,4 +124,9 @@ while mass_fuel > 0 % && step < max_step
 
 end
 
+DV_tot = impulse_total / M_A;
+
+
 return
+
+

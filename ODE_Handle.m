@@ -1,4 +1,5 @@
-function [t_all, r_all, v_all, DV_tot] = ODE_Handle(rA0, vA0, thrust, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta)
+function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta)
+
 % rA0 and vA0 come from the inital data
 % Thrust will stay constant for now
 % dt is the stepsize
@@ -15,6 +16,8 @@ tol = 1e-12; % acceptable tolerance
 options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
 g = 0.00980665; % km/s^2
 
+thrust = thrust*array_num;
+
 thrust = thrust / 1000; % to convert to kg*km/s^2 (kN)
 
 mdot = thrust / (g * Isp); % mass flow rate of the ion thruster
@@ -29,9 +32,12 @@ DV_tot = 0;
 r_all = [];
 v_all = [];
 t_all = [];
-RV_all = [];
+a_all = [];
+e_all = [];
 
-impulse_total = 0;
+i_total = 0; % total impulse before dividing by M_A
+
+DV = F*(thrust*dt)/(M_A + ((thrust/(g*Isp))*dt));
 
 % max_step = 1000;
 step = 0;
@@ -44,11 +50,11 @@ while mass_fuel > 0 % && step < max_step
 
 	[~, RV] = ode45(@(t, y) propagate_2BP(t, y, mu, thrust, M_A, F), [0 dt], [rA0; vA0], options);
     
-
-    if any(isnan(RV(end,:))) || any(isinf(RV(end,:)))
-        warning('NaN or Inf detected at step %d (t = %d s)', step, t_tot);
-        break;
-    end
+    % Debug can remove soon...
+    % if any(isnan(RV(end,:))) || any(isinf(RV(end,:)))
+    %     warning('NaN or Inf detected at step %d (t = %d s)', step, t_tot);
+    %     break;
+    % end
 
     % r_Af = RV(1:3);
     % v_Af = RV(4:6);
@@ -62,8 +68,14 @@ while mass_fuel > 0 % && step < max_step
     % Updates and Extracts all time steps
     N = size(RV,1);
     r_all = [r_all; RV(:,1:3)];
-    v_all = [v_all; RV(:,4:6)];
-    t_all = [t_all; t_tot + (0:N-1)' * (dt/(N-1))]; % interpolate time steps
+    v_all = [v_all; RV(:,4:6)+DV];
+
+    t_span = linspace(t_tot, t_tot + dt, N)';
+    t_all = [t_all; t_span]; % interpolate time steps  + (0:N-1)' * (dt/(N-1))
+
+    [a_step, e_step] = orbit_elements(RV(:,1:3), RV(:,4:6), mu);
+    a_all = [a_all; a_step];
+    e_all = [e_all; e_step];
 
     r_Af = RV(end,1:3)';
     v_Af = RV(end,4:6)';
@@ -73,16 +85,8 @@ while mass_fuel > 0 % && step < max_step
     mass_fuel = mass_fuel - fuel_used;
     mass_sc = mass_sc - fuel_used;
 
-    if mass_fuel < 0
-        mass_fuel = 0;
-    end
-
-    if mass_sc < 2500  % dry mass floor
-        mass_sc = 2500;
-    end
-
     % Updates ΔV imparted to asteroid
-    impulse_total = impulse_total + F * thrust * dt;
+    i_total = i_total + F * thrust * dt;
     % DV_step = (F * thrust * dt) / M_A;
     % DV_tot = DV_tot + DV_step;
    
@@ -112,6 +116,9 @@ while mass_fuel > 0 % && step < max_step
 
 end
 
-DV_tot = impulse_total / M_A;
-	
+DV_tot = F * i_total / (M_A + ((thrust/(g*Isp))*dt)) ;
+
+
 return
+
+

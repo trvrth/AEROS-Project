@@ -39,11 +39,10 @@ axis equal;
 xlabel('X'); ylabel('Y'); zlabel('Z');
 title('Didymos Trajectory');
 
+plot3(RV(:,1), RV(:,2), RV(:,3), 'g');
 plot3(Earth_RV(:,1), Earth_RV(:,2), Earth_RV(:,3), 'b'); 
 plot3(Didymos_RV(:,1), Didymos_RV(:,2), Didymos_RV(:,3), 'r');
-plot3(RV(:,1), RV(:,2), RV(:,3), 'g');
-legend('Earth', 'Without Thrust', 'With Thrust');
-
+legend('With Thrust', 'Earth', 'Without Thrust', 'With Thrust');
 % Plotting the Semi Major Axis and Eccentricity Change over time due to Ion
 % Beam
 
