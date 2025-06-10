@@ -1,9 +1,9 @@
-function [a, e, e_vec] = orbit_elements(r, v, mu)
+function [a, e] = orbit_elements(r, v, mu)
     h = cross(r, v);
-    r_norm = sqrt(sum(r.^2, 2)); % norm function did not work for this
+    r_norm = sqrt(sum(r.^2, 2));
     v_norm = sqrt(sum(v.^2, 2));
     
-    % To find change in Semi-Major Axis
+    % Specific orbital energy
     energy = (v_norm.^2)/2 - mu ./ r_norm;
     a = -mu ./ (2 * energy);
     

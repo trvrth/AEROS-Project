@@ -5,7 +5,7 @@ function out = IBFraction(R_A, d, theta)
 % theta is ion beam divergence angle
 
 beam_radius = d*tand(theta);
-frac = (R_A/beam_radius)^2;
+frac = (R_A/beam_radius); % maybe squared bc of area?
 out = min([1 frac]);
 
 return

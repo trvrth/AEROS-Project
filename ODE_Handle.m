@@ -35,9 +35,12 @@ t_all = [];
 a_all = [];
 e_all = [];
 
+angle_window = 90;
+
 i_total = 0; % total impulse before dividing by M_A
 
-DV = F*(thrust*dt)/(M_A + ((thrust/(g*Isp))*dt));
+%DV = F*(thrust*dt)/(M_A + ((thrust/(g*Isp))*dt)); question about why the
+%mass flow rate is on the bottom with M_A
 
 % max_step = 1000;
 step = 0;
@@ -45,55 +48,73 @@ first_loop = true;
 
 fprintf('[t = %6d s] mass_sc = %.2f kg, a_thrust = %.2e km/s^2\n', t_tot, mass_sc, thrust / mass_sc);
 
-while mass_fuel > 0 % && step < max_step
-    
+%Calculate starting o_angle
+[~, ~, e_vec] = orbit_elements(rA0, vA0, mu);
 
-	[~, RV] = ode45(@(t, y) propagate_2BP(t, y, mu, thrust, M_A, F), [0 dt], [rA0; vA0], options);
-    
-    % Debug can remove soon...
-    % if any(isnan(RV(end,:))) || any(isinf(RV(end,:)))
-    %     warning('NaN or Inf detected at step %d (t = %d s)', step, t_tot);
-    %     break;
-    % end
+e_unit = e_vec/norm(e_vec);
+r_unit = rA0/norm(rA0);
 
-    % r_Af = RV(1:3);
-    % v_Af = RV(4:6);
-    % 
-    % % Saves the Output of Function to be graphed in main file
-	% % RV_all = [RV_all; RV];
-    % r_all = [r_all; r_Af];
-    % v_all = [v_all; v_Af];
-    % t_all = [t_all; t_tot];
+o_angle = acos((dot(e_unit,r_unit))); 
     
+o_angle = rad2deg(o_angle);
+
+% Start of the Propagation simulation, runs until the fuel runs out 
+while mass_fuel > 0
+    fprintf('Angle to perihelion: %.2f°\n', o_angle);
+
+    % Checks angle and applies thrust only at the angle provided
+    if o_angle < angle_window
+
+        [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, thrust, M_A, F), [0 dt], [rA0; vA0], options);
+        fprintf('thrust applied!');
+       
+
+        % Updating Mass of the Space Craft and the Fuel
+        fuel_used = mdot * dt;
+        mass_fuel = mass_fuel - fuel_used;
+        mass_sc = mass_sc - fuel_used;
+
+        fprintf('Fuel left: %.2f\n', mass_fuel);
+        % Updates ΔV imparted to asteroid
+        % DV_dt = F*(thrust*dt)/(M_A + ((thrust/(g*Isp))*dt)); 
+        i_total = i_total + F * thrust * dt;
+        % DV_step = (F * thrust * dt) / M_A;
+        % DV_tot = DV_tot + DV_step;
+
+    else
+
+	    [~, RV] = ode45(@(t, y) propagate_WOT(t, y, mu), [0 dt], [rA0; vA0], options);
+
+    end
+
     % Updates and Extracts all time steps
     N = size(RV,1);
     r_all = [r_all; RV(:,1:3)];
-    v_all = [v_all; RV(:,4:6)+DV];
+    v_all = [v_all; RV(:,4:6)]; 
 
     t_span = linspace(t_tot, t_tot + dt, N)';
     t_all = [t_all; t_span]; % interpolate time steps  + (0:N-1)' * (dt/(N-1))
 
-    [a_step, e_step] = orbit_elements(RV(:,1:3), RV(:,4:6), mu);
+    [a_step, e_step, e_vec] = orbit_elements(RV(:,1:3), RV(:,4:6), mu);
     a_all = [a_all; a_step];
     e_all = [e_all; e_step];
+    
+    
+    % This updates the angle of the orbit
+    r_vec = r_all(end, :)';
+    e_vec = e_vec(end, :)';
 
-    r_Af = RV(end,1:3)';
-    v_Af = RV(end,4:6)';
+    e_norm = e_vec/norm(e_vec);
+    r_norm = r_vec/norm(r_vec);
 
-    % Updating Mass of the Space Craft and the Fuel
-    fuel_used = mdot * dt;
-    mass_fuel = mass_fuel - fuel_used;
-    mass_sc = mass_sc - fuel_used;
+    o_angle = acos((dot(e_norm,r_norm))); 
+    
+    o_angle = rad2deg(o_angle);
 
-    % Updates ΔV imparted to asteroid
-    i_total = i_total + F * thrust * dt;
-    % DV_step = (F * thrust * dt) / M_A;
-    % DV_tot = DV_tot + DV_step;
    
-
     % Updating State
-	rA0 = r_Af;
-	vA0 = v_Af;
+	rA0 = RV(end,1:3)';
+	vA0 = RV(end,4:6)';
 
     t_tot = t_tot + dt;
 
@@ -104,7 +125,7 @@ while mass_fuel > 0 % && step < max_step
             break;
     end
 
-    step = step + 1;
+    %step = step + 1;
 
     if first_loop
     fprintf('Initial a_thrust: %.3e km/s²\n', thrust / mass_sc);
@@ -120,5 +141,3 @@ DV_tot = F * i_total / (M_A + ((thrust/(g*Isp))*dt)) ;
 
 
 return
-
-

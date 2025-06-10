@@ -23,8 +23,8 @@ F = IBFraction(Asteroid_Radius, Standoff_Distance, Ion_Beam_Divergence_Angle);
 
 % ODE45 Propagation of Earth and Didymos with no force, then the ODE_Handle
 % of Didymos with Ion Force. 
-[Earth_t, Earth_RV] = ode45(@(t, y) propagate_2BP(t, y, mu, 0, M_A, F), 0:dt:7e7, EarthIC, options);
-[Didymos_t, Didymos_RV] = ode45(@(t, y) propagate_2BP(t, y, mu, 0, M_A, F), 0:dt:7e7, DidymosIC, options);
+[Earth_t, Earth_RV] = ode45(@(t, y) propagate_WOT(t, y, mu), 0:dt:7e7, EarthIC, options);
+[Didymos_t, Didymos_RV] = ode45(@(t, y) propagate_WOT(t, y, mu), 0:dt:7e7, DidymosIC, options);
 [t, r, v, DV_total, a, e] = ODE_Handle(DidymosIC(1:3), DidymosIC(4:6), Thrust, Array_Num, dt, mass_fuel_sc, mass_sc, Isp, M_A, Asteroid_Radius, Standoff_Distance, Ion_Beam_Divergence_Angle);
 
 % Combines r and v into RV so it can be easily plotted in 3D.
