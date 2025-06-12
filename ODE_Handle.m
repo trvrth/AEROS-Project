@@ -1,8 +1,10 @@
-function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta)
+function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, sc_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta,orbit_window)
 
 % rA0 and vA0 come from the inital data
 % Thrust will stay constant for now
 % dt is the stepsize
+% array_num is the number of thrusters that are on the spacecraft pointed towards the asteroid
+% sc_num is the number of identical space crafts, participating. 
 % mass_fuel is the mass of the xenon fuel on board space craft
 % mass_sc is the total mass of the space craft including the fuel
 % Isp is the specific impulse in seconds
@@ -10,6 +12,7 @@ function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thru
 % R_A is the radius of the asteroid (in meters)
 % d is the stand off distance between the space craft and the asteroid (in meters)
 % theta is the Ion Beam Divergence Angle (in degrees)
+% orbit_window is the window in the orbit that the thrusters will turn on, 0 is perihelion and 180 is aphelion. This number is in degrees. 
 
 mu = 1.32712E+11; % km^3/s^2
 tol = 1e-12; % acceptable tolerance
@@ -35,7 +38,7 @@ t_all = [];
 a_all = [];
 e_all = [];
 
-angle_window = 90;
+angle_window = orbit_window;
 
 i_total = 0; % total impulse before dividing by M_A
 
@@ -65,16 +68,22 @@ while mass_fuel > 0
     % Checks angle and applies thrust only at the angle provided
     if o_angle < angle_window
 
-        [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, thrust, M_A, F), [0 dt], [rA0; vA0], options);
+        [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, thrust*sc_num, M_A, F, mass_sc, d), [0 dt], [rA0; vA0], options);
         fprintf('thrust applied!');
        
 
         % Updating Mass of the Space Craft and the Fuel
         fuel_used = mdot * dt;
+
+        if fuel_used > mass_fuel
+            fuel_used = mass_fuel;  % just use what's left, this prevents fuel going negative
+        end
+
         mass_fuel = mass_fuel - fuel_used;
         mass_sc = mass_sc - fuel_used;
 
         fprintf('Fuel left: %.2f\n', mass_fuel);
+
         % Updates ΔV imparted to asteroid
         % DV_dt = F*(thrust*dt)/(M_A + ((thrust/(g*Isp))*dt)); 
         i_total = i_total + F * thrust * dt;

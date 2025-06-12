@@ -5,17 +5,17 @@ mu = 1.32712E+11; % km^3/s^2
 mass_sc = 5000; % total mass of the space craft (including fuel)
 mass_fuel_sc = 2500; % mass of xenon on space craft
 Isp = 4170; % seconds (Max Throttle of Next-C)
-Thrust = 237e-3; % Newtons of Force (Thrust)
+Thrust = 237e-1; % Newtons of Force (Thrust)
 dt = 36000; % step size
-Array_Num = 6; % number of thrusters firing towards the asteroid. 
-Num_SC = 1; %number of identical space craft.
+Array_Num = 10; % number of thrusters firing towards the asteroid. 
+Num_SC = 1200; %number of identical space craft.
 Orbit_Window = 45; % window of orbit for thrusters to turn on, in degrees. 
 
 tol = 1e-12; % acceptable tolerance
 options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
 
-Asteroid_Radius = 278.87; % 780 meter diameter 
-Standoff_Distance = 1000; % pretty close from asteroid surface
+Asteroid_Radius = 390; % 780 meter diameter 
+Standoff_Distance = 10; % pretty close from asteroid surface
 Ion_Beam_Divergence_Angle = 22; % In degrees
 
 EarthIC = [6.82500E+07; 1.30864E+08; 1.81329E+04; -2.67639E+01; 1.38981E+01; -9.22794E-04];
@@ -53,8 +53,8 @@ title('Didymos Trajectory');
 plot3(0, 0, 0, 'yo', 'MarkerSize', 10, 'MarkerFaceColor', 'y', 'DisplayName', 'Sun');
 
 plot3(Earth_RV(:,1), Earth_RV(:,2), Earth_RV(:,3), 'b','DisplayName', 'Earth'); 
-plot3(Didymos_RV(:,1), Didymos_RV(:,2), Didymos_RV(:,3), 'r', 'DisplayName', 'Didymos (No Thrust)', lineWidth=0.1);
-plot3(final_RV(:,1), final_RV(:,2), final_RV(:,3), 'g', 'DisplayName', 'Didymos (With Thrust)', lineWidth=0.1);
+plot3(Didymos_RV(:,1), Didymos_RV(:,2), Didymos_RV(:,3), 'r', 'DisplayName', 'Didymos (No Thrust)', lineWidth=.5);
+plot3(final_RV(:,1), final_RV(:,2), final_RV(:,3), 'g', 'DisplayName', 'Didymos (With Thrust)', lineWidth=.5);
 
 legend show;
 
@@ -74,8 +74,8 @@ xlabel('Time [days]');
 ylabel('Eccentricity');
 
 % Output total ΔV and operating time
-delta_a_m = (a(end) - a(1));
-fprintf('Change in semi-major axis: %.3f km\n', delta_a_m);
+delta_a_m = (a(end) - a(1)) * 1000;
+fprintf('Change in semi-major axis: %.3f meters\n', delta_a_m);
 fprintf('Total ΔV imparted: %.6e km/s\n', DV_total);
 fprintf('Operation time: %.2f days\n', t(end) / 86400);
 
