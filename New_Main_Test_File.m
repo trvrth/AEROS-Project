@@ -32,7 +32,7 @@ DidymosIC = [-2.39573E+08; -2.35661E+08;  9.54384E+06; 1.24732E+01; -9.74427E+00
 % Combines r and v into RV so it can be easily plotted in 3D.
 RV = [r v];
 
-% Takes last entrie in r and v to find the final positona nd velocity to
+% Takes last entrie in r and v to find the final positon and velocity to
 % use as intial conditions to map the final orbit after thrusting.
 r_final = r(end,:)';
 v_final = v(end,:)';

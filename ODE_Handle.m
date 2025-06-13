@@ -23,7 +23,7 @@ thrust = thrust*array_num;
 
 thrust = thrust / 1000; % to convert to kg*km/s^2 (kN)
 
-mdot = thrust / (g * Isp); % mass flow rate of the ion thruster
+mdot = thrust*2 / (g * Isp); % mass flow rate of the ion thruster
 
 % Ion Beam coupling efficiency
 F = IBFraction(R_A, d, theta);
@@ -116,9 +116,9 @@ while mass_fuel > 0
     e_norm = e_vec/norm(e_vec);
     r_norm = r_vec/norm(r_vec);
 
-    o_angle = acos((dot(e_norm,r_norm))); 
+    o_angle = acosd((dot(e_norm,r_norm))); 
     
-    o_angle = rad2deg(o_angle);
+    % o_angle = rad2deg(o_angle);
 
    
     % Updating State
@@ -146,7 +146,6 @@ while mass_fuel > 0
 
 end
 
-DV_tot = F * i_total / (M_A + ((thrust/(g*Isp))*dt)) ;
-
+DV_tot = i_total / (M_A + ((thrust/(g*Isp))*dt)) ;
 
 return
