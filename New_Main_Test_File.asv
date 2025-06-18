@@ -1,7 +1,8 @@
 
 %Inputs to program
-sim_menu()
-global SC_POS
+ans_infront = menu("Where is the Spacecraft Relative to the Asteroid's motion: ", 'Infront', 'Behind');
+ans_infront = menu("Is there any Thrust applied?", '')
+
 
 M_A = 5e9; % 528 billion kilograms 
 g = 0.00980665; % km/s^2
@@ -26,10 +27,10 @@ EarthIC = [6.82500E+07; 1.30864E+08; 1.81329E+04; -2.67639E+01; 1.38981E+01; -9.
 DidymosIC = [-2.39573E+08; -2.35661E+08;  9.54384E+06; 1.24732E+01; -9.74427E+00; -8.78661E-01]; % Initial Conditions
 
 % Infront Logic
-if SC_POS
-    Infront = 1; % behind is true
-else
-    Infront = -1; % infront is false
+if ans_infront == 1
+    Infront = -1;
+elseif ans_infront == 2
+    Infront = 1;
 end
 
 % F = IBFraction(Asteroid_Radius, Standoff_Distance, Ion_Beam_Divergence_Angle);

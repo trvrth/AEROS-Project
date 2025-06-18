@@ -1,4 +1,4 @@
-function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, sc_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta,orbit_window)
+function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, sc_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta, orbit_window, infront)
 
 % rA0 and vA0 come from the inital data
 % Thrust will stay constant for now
@@ -12,7 +12,10 @@ function [t_all, r_all, v_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thru
 % R_A is the radius of the asteroid (in meters)
 % d is the stand off distance between the space craft and the asteroid (in meters)
 % theta is the Ion Beam Divergence Angle (in degrees)
-% orbit_window is the window in the orbit that the thrusters will turn on, 0 is perihelion and 180 is aphelion. This number is in degrees. 
+% orbit_window is the window in the orbit that the thrusters will turn on, 0 is perihelion and 180 is aphelion. This number is in degrees.
+% infront is a sign variable to indicate whether the spacecraft is infront of or behind the asteroid's motion, changes sign accordingly within propagate functions
+
+global THRUST_ON SIM_MODE SIM_TIME
 
 mu = 1.32712E+11; % km^3/s^2
 tol = 1e-12; % acceptable tolerance
@@ -24,6 +27,14 @@ thrust = thrust*array_num;
 thrust = thrust / 1000; % to convert to kg*km/s^2 (kN)
 
 mdot = thrust*2 / (g * Isp); % mass flow rate of the ion thruster
+
+% Changes the Mode of Simulation
+end_condition_num = 0;
+if SIM_MODE == 2
+    end_condition_num = SIM_TIME;  % simulate for a specific time
+else
+    disp("SIM_MODE is until fuel runs out!");
+end
 
 % Ion Beam coupling efficiency
 F = IBFraction(R_A, d, theta);
@@ -62,13 +73,20 @@ o_angle = acos((dot(e_unit,r_unit)));
 o_angle = rad2deg(o_angle);
 
 % Start of the Propagation simulation, runs until the fuel runs out 
-while mass_fuel > 0
+while (mass_fuel > 0)
     fprintf('Angle to perihelion: %.2f°\n', o_angle);
+    
+    if SIM_MODE == 2
+        if t_tot > end_condition_num
+            disp("sim ending b/c of time constraint")
+            break
+        end
+    end
 
     % Checks angle and applies thrust only at the angle provided
-    if o_angle < angle_window
+    if THRUST_ON && o_angle < angle_window
 
-        [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, thrust*sc_num, M_A, F, mass_sc, d), [0 dt], [rA0; vA0], options);
+        [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, thrust*sc_num, M_A, F, mass_sc, d, infront), [0 dt], [rA0; vA0], options);
         fprintf('thrust applied!');
        
 
@@ -81,6 +99,11 @@ while mass_fuel > 0
 
         mass_fuel = mass_fuel - fuel_used;
         mass_sc = mass_sc - fuel_used;
+        
+        if mass_fuel <= 0
+            fprintf('Fuel exhausted\n');
+            THRUST_ON = false;  % disables thrust globally
+        end
 
         fprintf('Fuel left: %.2f\n', mass_fuel);
 
@@ -92,7 +115,7 @@ while mass_fuel > 0
 
     else
 
-	    [~, RV] = ode45(@(t, y) propagate_WOT(t, y, mu), [0 dt], [rA0; vA0], options);
+	    [~, RV] = ode45(@(t, y) propagate_WOT(t, y, mu, mass_sc, d, infront), [0 dt], [rA0; vA0], options);
 
     end
 
@@ -117,10 +140,7 @@ while mass_fuel > 0
     r_norm = r_vec/norm(r_vec);
 
     o_angle = acosd((dot(e_norm,r_norm))); 
-    
-    % o_angle = rad2deg(o_angle);
 
-   
     % Updating State
 	rA0 = RV(end,1:3)';
 	vA0 = RV(end,4:6)';

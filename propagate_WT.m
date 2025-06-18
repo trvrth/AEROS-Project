@@ -1,4 +1,4 @@
-function out = propagate_WT(~, input, mu, thrust, M_A, F, mass_sc, standoff)
+function out = propagate_WT(~, input, mu, thrust, M_A, F, mass_sc, standoff, infront)
 
     r = input(1:3);
     v = input(4:6);
@@ -22,7 +22,7 @@ function out = propagate_WT(~, input, mu, thrust, M_A, F, mass_sc, standoff)
     r_rel_norm = norm(r_rel);
     a_sc = -G * mass_sc / r_rel_norm^3 * r_rel;
     
-    a_total = a_asteroid + a_thrust + a_sc; % added together bc they are applied in the same direction
+    a_total = a_asteroid + infront*(a_thrust + a_sc); % a_sc should be negative if behind asteroid, infront flips sign when sc is in front
 
     out = [v ; a_total];
 
