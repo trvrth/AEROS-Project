@@ -48,7 +48,7 @@ function sim_menu()
             
         if SIM_MODE == 2
            
-            answer = inputdlg('Enter total simulation time (seconds):', 'Simulation Duration', [1 35], {'1000'});
+            answer = inputdlg('Enter total simulation time (seconds):', 'Simulation Duration', [1 35], {'3.156e+7'});
             
             if isempty(answer)
                 disp('Simulation cancelled');

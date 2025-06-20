@@ -1,4 +1,4 @@
-
+clear;
 %Inputs to program
 sim_menu()
 global SC_POS
@@ -32,12 +32,15 @@ else
     Infront = -1; % infront is false
 end
 
-% F = IBFraction(Asteroid_Radius, Standoff_Distance, Ion_Beam_Divergence_Angle);
+rA0 = DidymosIC(1:3);
+vA0 = DidymosIC(4:6);
 
-% ODE45 Propagation of Earth and Didymos with no force, then the ODE_Handle of Didymos with Ion Force. 
-[Earth_t, Earth_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, EarthIC, options);
-[Didymos_t, Didymos_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, DidymosIC, options);
-[t, r, v, DV_total, a, e] = ODE_Handle(DidymosIC(1:3), DidymosIC(4:6), Thrust, Array_Num, Num_SC, dt, mass_fuel_sc, mass_sc, Isp, M_A, Asteroid_Radius, Standoff_Distance, Ion_Beam_Divergence_Angle, Orbit_Window, Infront);
+params = {Thrust, Array_Num, Num_SC, dt, ...
+    mass_fuel_sc, mass_sc, Isp, M_A, Asteroid_Radius, Standoff_Distance, ... 
+    Ion_Beam_Divergence_Angle, Orbit_Window, Infront};
+
+% Call ODE_Handle
+[t, r, v, Delta_R, DV_total, a, e] = ODE_Handle(rA0, vA0, params{:});
 
 % Combines r and v into RV so it can be easily plotted in 3D.
 RV = [r v];
@@ -48,6 +51,9 @@ v_final = v(end,:)';
 
 RV_finalIC = [r_final, v_final];
 
+% ODE45 Propagation of Earth and Didymos with no force, then the ODE_Handle of Didymos with Ion Force. 
+[Earth_t, Earth_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, EarthIC, options);
+[Didymos_t, Didymos_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, DidymosIC, options);
 [~, final_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, RV_finalIC, options);
 
 % Plotting the 3D view of the orbits (the orbits are very close to one another)
@@ -67,10 +73,16 @@ plot3(final_RV(:,1), final_RV(:,2), final_RV(:,3), 'g', 'DisplayName', 'Didymos 
 
 legend show;
 
-% Plotting the Semi Major Axis and Eccentricity Change over time due to Ion
-% Beam
+% Plotting the Displacement, Semi Major Axis, and Eccentricity Change over time due to Ion Beam
 
-figure;
+% Can add back in once floating point error is resolved in time step displacement calculations
+% figure;
+% subplot(3,1,1);
+% plot(Delta_R(:,1) / 86400, Delta_R(:,2));
+% xlabel('Time [days]');
+% ylabel('Displacement [km]');
+% title('Deflection Displacement over time');
+
 subplot(2,1,1);
 plot(t / 86400, a);
 xlabel('Time [days]');
@@ -81,10 +93,11 @@ subplot(2,1,2);
 plot(t / 86400, e);
 xlabel('Time [days]');
 ylabel('Eccentricity');
+title('Eccentricity over time');
 
-% Output total ΔV and operating time
+% Output Semi Major Axis, total ΔV, and operating time
 delta_a_m = (a(end) - a(1));
 fprintf('Change in semi-major axis: %.3f km\n', delta_a_m);
+fprintf('Total Position Difference Distance: %.3f km\n', Delta_R); %Delta_R(end,2))
 fprintf('Total ΔV imparted: %.6e km/s\n', DV_total);
 fprintf('Operation time: %.2f days\n', t(end) / 86400);
-
