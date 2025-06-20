@@ -32,8 +32,8 @@ else
     Infront = -1; % infront is false
 end
 
-rA0 = DidymosIC(1:3);
-vA0 = DidymosIC(4:6);
+rA0 = DidymosIC(1:3, 1);
+vA0 = DidymosIC(4:6, 1);
 
 params = {Thrust, Array_Num, Num_SC, dt, ...
     mass_fuel_sc, mass_sc, Isp, M_A, Asteroid_Radius, Standoff_Distance, ... 

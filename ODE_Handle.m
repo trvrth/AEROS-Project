@@ -60,7 +60,7 @@ first_loop = true;
 fprintf('[t = %6d s] mass_sc = %.2f kg, a_thrust = %.2e km/s^2\n', t_tot, mass_sc, thrust / mass_sc);
 
 %Calculate starting o_angle
-[~, ~, e0_vec, a0_scalar, e0_scalar] = orbit_elements(rA0, vA0, mu);
+[a0_scalar, e0_scalar, e0_vec] = orbit_elements(rA0, vA0, mu);
 
 e_unit = e0_vec/norm(e0_vec);
 r_unit = rA0/norm(rA0);
@@ -123,25 +123,26 @@ while (mass_fuel > 0)
 
     end
 
+    % Updating State
+	rA0 = RV(end,1:3)';
+	vA0 = RV(end,4:6)';
+
+    t_tot = t_tot + dt;
+
     % Updates and Extracts all time steps
-    N = size(RV,1);
-    r_all = [r_all; RV(:,1:3)];
-    v_all = [v_all; RV(:,4:6)]; 
+    r_all = [r_all; RV(end,1:3)];
+    v_all = [v_all; RV(end,4:6)]; 
 
-    t_span = linspace(t_tot, t_tot + dt, N)';
-    t_all = [t_all; t_span]; % interpolates time steps
+    t_all = [t_all; t_tot]; % interpolates time steps
 
-    [a_step, e_step, e_vec, ~, ~] = orbit_elements(RV(:,1:3), RV(:,4:6), mu);
+    [a_step, e_step, e_vec] = orbit_elements(RV(end,1:3)', RV(end,4:6)', mu);
     a_all = [a_all; a_step];
     e_all = [e_all; e_step];
     
     % This updates the angle of the orbit
     r_vec = r_all(end, :)';
-    e_vec = e_vec(end, :)';
-
     e_unit = e_vec/norm(e_vec);
     r_unit = r_vec/norm(r_vec);
-
     o_angle = acosd((dot(e_unit,r_unit))); 
     
     % Updates Displacement of asteroid from original positions
@@ -152,20 +153,7 @@ while (mass_fuel > 0)
     % af_step = a_scalar;
     % dela_step = af_step - a0_scalar;
     % delr_step = 1.5 * C * (dela_step/a0_scalar) * (dt/T);
-    % if abs(delr_step) > 1e-10 && isreal(delr_step)  % make it so it can't add imaginary
-    % t_delr = [t_delr; t_tot];          % only log time when Δr is meaningful
-    % delr_all = [delr_all; delr_step];  % store corresponding Δr
-    % end
-    % 
-    % delr = [t_delr, delr_all];
 
-    % Updating State
-	rA0 = RV(end,1:3)';
-	vA0 = RV(end,4:6)';
-
-    t_tot = t_tot + dt;
-
-    
     % Debug terms
 
     if mass_fuel < 0
@@ -192,11 +180,11 @@ delr = 1.5 * C * (dela/a0_scalar) * (dt/T);
 delr = real(delr);
 
 % More Debug
-fprintf('a0 = %.3e km\n', a0_scalar);
-fprintf('e0 = %.3e km\n', e0_scalar);
-fprintf('b = %.3e km\n', b);
-fprintf('C = %.3e km\n', C);
-fprintf('T = %.3e s\n', T);
+% fprintf('a0 = %.3e km\n', a0_scalar);
+% fprintf('e0 = %.3e km\n', e0_scalar);
+% fprintf('b = %.3e km\n', b);
+% fprintf('C = %.3e km\n', C);
+% fprintf('T = %.3e s\n', T);
 
 % Find total ΔV imparted on asteroid
 DV_tot = i_total / (M_A + ((thrust/(g*Isp))*dt));
