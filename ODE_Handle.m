@@ -88,10 +88,16 @@ while SIM_ON
 
     % Sim runs until time runs out
     if SIM_MODE == 2
+
+        if (mass_fuel < 0)
+            infront = 0; % makes it so that the space craft gravity is 0 since it should be away from the asteroid via RCS systems onboard
+        end
+
         if t_tot > end_condition_num
             disp("sim ending b/c of time constraint")
             SIM_ON = false;
         end
+
     end
 
     % Checks angle and applies thrust only at the angle provided
@@ -119,10 +125,7 @@ while SIM_ON
         fprintf('Fuel left: %.2f\n', mass_fuel);
 
         % Updates ΔV imparted to asteroid
-        % DV_dt = F*(thrust*dt)/(M_A + ((thrust/(g*Isp))*dt)); 
         i_total = i_total + F * thrust * dt;
-        % DV_step = (F * thrust * dt) / M_A;
-        % DV_tot = DV_tot + DV_step;
 
     else
 
@@ -154,9 +157,6 @@ while SIM_ON
     
     % Updates Displacement of asteroid from original positions
 
-    % Floating Point Error - need to find work around, if to find
-    % displacement over time using the same while loop
-
     b = real(a0_scalar * sqrt(1 - e0_scalar^2)); % semi-minor axis
     x = (a0_scalar^2 - b^2);
     C = real(pi * (a0_scalar + b) * (1 + (3*x^2)/(10 + sqrt(4-(3*x^2))))); % circumference of undeflected orbit
@@ -165,8 +165,6 @@ while SIM_ON
     dela_step = af_step - a0_scalar;
     delr_step = 1.5 * C * (dela_step/a0_scalar) * (1/T);
     delr_delt = [delr_delt; delr_step];
-
-    %step = step + 1;
 
     if first_loop
     fprintf('Initial a_thrust: %.3e km/s²\n', thrust / mass_sc);
@@ -178,21 +176,10 @@ while SIM_ON
 
 end
 
-%Finds Displacement of asteroid, not over time just end result (floating point error is preventing me rn)
-% af = norm(a_all(end,:));
-% dela = af - a0_scalar; % change of the semi-major axis, a0 is found before while loop
-% dt = t_all(end); % takes time elapsed of deflection
-% delr = 1.5 * C * (dela/a0_scalar) * (dt/T);
-% delr = real(delr);
+% Finds Displacement of asteroid, over time
 
 delr = delr_delt .* t_all;
 
-% More Debug
-% fprintf('a0 = %.3e km\n', a0_scalar);
-% fprintf('e0 = %.3e km\n', e0_scalar);
-% fprintf('b = %.3e km\n', b);
-% fprintf('C = %.3e km\n', C);
-% fprintf('T = %.3e s\n', T);
 
 % Find total ΔV imparted on asteroid
 DV_tot = i_total / (M_A + ((thrust/(g*Isp))*dt));

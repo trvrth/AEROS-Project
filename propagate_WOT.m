@@ -18,7 +18,7 @@ function out = propagate_WOT(~, input, mu, mass_sc, standoff, infront)
     a_sc = -G * mass_sc / r_rel_norm^3 * r_rel;
 
     a_total = a_asteroid + infront*(a_sc);
-
+   
     out = [v ;  a_total];
 
 end
