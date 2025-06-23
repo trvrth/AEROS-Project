@@ -1,4 +1,7 @@
+clc;
 clear;
+close all;
+
 %Inputs to program
 sim_menu()
 global SC_POS
@@ -82,6 +85,7 @@ legend show;
 % xlabel('Time [days]');
 % ylabel('Displacement [km]');
 % title('Deflection Displacement over time');
+figure;
 
 subplot(2,1,1);
 plot(t / 86400, a);
@@ -98,6 +102,6 @@ title('Eccentricity over time');
 % Output Semi Major Axis, total ΔV, and operating time
 delta_a_m = (a(end) - a(1));
 fprintf('Change in semi-major axis: %.3f km\n', delta_a_m);
-fprintf('Total Position Difference Distance: %.3f km\n', Delta_R); %Delta_R(end,2))
+fprintf('Total Position Difference Distance: %.3f km\n', Delta_R(end,1));
 fprintf('Total ΔV imparted: %.6e km/s\n', DV_total);
 fprintf('Operation time: %.2f days\n', t(end) / 86400);

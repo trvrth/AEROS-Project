@@ -49,7 +49,7 @@ t_all = [];
 a_all = [];
 e_all = [];
 t_delr = [];
-delr_all = [];
+delr_delt = [];
 
 angle_window = orbit_window;
 
@@ -70,20 +70,27 @@ o_angle = acos((dot(e_unit,r_unit)));
 o_angle = rad2deg(o_angle);
 
 % Set up for Displacement Calculations
-
-b = real(a0_scalar * sqrt(1 - e0_scalar^2)); % semi-minor axis
-x = (a0_scalar^2 - b^2);
-C = real(pi * (a0_scalar + b) * (1 + (3*x^2)/(10 + sqrt(4-(3*x^2))))); % circumference of undeflected orbit
 T = 2 * pi * sqrt(a0_scalar^3/mu); % period of undeflected orbit
 
+% Condition Variable
+SIM_ON = true;
+
 % Start of the Propagation simulation
-while (mass_fuel > 0)
+while SIM_ON
     fprintf('Angle to perihelion: %.2f°\n', o_angle);
     
+    % Sim runs until fuel runs out
+    if SIM_MODE == 1
+        if (mass_fuel < 0)
+            SIM_ON = false;
+        end
+    end
+
+    % Sim runs until time runs out
     if SIM_MODE == 2
         if t_tot > end_condition_num
             disp("sim ending b/c of time constraint")
-            break
+            SIM_ON = false;
         end
     end
 
@@ -135,7 +142,7 @@ while (mass_fuel > 0)
 
     t_all = [t_all; t_tot]; % interpolates time steps
 
-    [a_step, e_step, e_vec] = orbit_elements(RV(end,1:3)', RV(end,4:6)', mu);
+    [a_step, e_step, e_vec] = orbit_elements(rA0, vA0, mu);
     a_all = [a_all; a_step];
     e_all = [e_all; e_step];
     
@@ -150,15 +157,14 @@ while (mass_fuel > 0)
     % Floating Point Error - need to find work around, if to find
     % displacement over time using the same while loop
 
-    % af_step = a_scalar;
-    % dela_step = af_step - a0_scalar;
-    % delr_step = 1.5 * C * (dela_step/a0_scalar) * (dt/T);
+    b = real(a0_scalar * sqrt(1 - e0_scalar^2)); % semi-minor axis
+    x = (a0_scalar^2 - b^2);
+    C = real(pi * (a0_scalar + b) * (1 + (3*x^2)/(10 + sqrt(4-(3*x^2))))); % circumference of undeflected orbit
 
-    % Debug terms
-
-    if mass_fuel < 0
-            break;
-    end
+    af_step = a_step;
+    dela_step = af_step - a0_scalar;
+    delr_step = 1.5 * C * (dela_step/a0_scalar) * (1/T);
+    delr_delt = [delr_delt; delr_step];
 
     %step = step + 1;
 
@@ -173,11 +179,13 @@ while (mass_fuel > 0)
 end
 
 %Finds Displacement of asteroid, not over time just end result (floating point error is preventing me rn)
-af = norm(a_all(end,:));
-dela = af - a0_scalar; % change of the semi-major axis, a0 is found before while loop
-dt = t_all(end); % takes time elapsed of deflection
-delr = 1.5 * C * (dela/a0_scalar) * (dt/T);
-delr = real(delr);
+% af = norm(a_all(end,:));
+% dela = af - a0_scalar; % change of the semi-major axis, a0 is found before while loop
+% dt = t_all(end); % takes time elapsed of deflection
+% delr = 1.5 * C * (dela/a0_scalar) * (dt/T);
+% delr = real(delr);
+
+delr = delr_delt .* t_all;
 
 % More Debug
 % fprintf('a0 = %.3e km\n', a0_scalar);

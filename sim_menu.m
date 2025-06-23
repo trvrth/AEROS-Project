@@ -6,21 +6,27 @@ function sim_menu()
     % Asks if thrust is active
     thrust_choice = menu('Is there thrust on the asteroid?', 'Yes', 'No');
 
+    if thrust_choice == 0
+        error('No selection made. Simulation cancelled.');
+    end
+
     if thrust_choice == 1
         THRUST_ON = true;
         % Thrust is ON: Ask how to run simulation
         sim_choice = menu('Choose simulation condition:','Run until fuel runs out', 'Run for a specified time');
 
+        if sim_choice == 0
+            error('No selection made. Simulation cancelled.');
+        end
+
         SIM_MODE = sim_choice;
-            
-            
+        
         if sim_choice == 2
-           
-            answer = inputdlg('Enter total simulation time (seconds):', 'Simulation Duration', [1 35], {'1000'});
-            
+
+            answer = inputdlg('Enter total simulation time (seconds):', 'Simulation Duration', [1 35], {'3.156e+7'});
+
             if isempty(answer)
-                disp('Simulation cancelled');
-                return;
+                error('Simulation cancelled');
             end
             
             SIM_TIME = str2double(answer{1});
@@ -29,11 +35,15 @@ function sim_menu()
                 error('Invalid simulation time');
             end
             
-            disp(['Running simulation with thrust for ', num2str(SIM_TIME), ' seconds...']);
-            
+            disp(['Running simulation with thrust for ', num2str(SIM_TIME), ' seconds...'])
         end
 
         ans_infront = menu("Where is the Spacecraft Relative to the Asteroid's motion:", 'In Front (ahead)', 'Behind (trailing)');
+        
+        if ans_infront == 0
+            error('No selection made. Simulation cancelled.');
+        end
+
         SC_POS = (ans_infront == 2);  % true if behind
 
     elseif thrust_choice == 2
@@ -42,6 +52,11 @@ function sim_menu()
         disp('Running simulation without thrust...');
 
         ans_infront = menu("Where is the Spacecraft Relative to the Asteroid's motion:", 'In Front (ahead)', 'Behind (trailing)');
+        
+        if ans_infront == 0
+            error('No selection made. Simulation cancelled.');
+        end
+
         SC_POS = (ans_infront == 2);  % true if behind
         SIM_MODE = 2;
             
@@ -51,8 +66,7 @@ function sim_menu()
             answer = inputdlg('Enter total simulation time (seconds):', 'Simulation Duration', [1 35], {'3.156e+7'});
             
             if isempty(answer)
-                disp('Simulation cancelled');
-                return;
+                error('No input provided. Simulation cancelled.');
             end
             
             SIM_TIME = str2double(answer{1});
@@ -62,10 +76,7 @@ function sim_menu()
             end
             
             disp(['Running simulation with thrust for ', num2str(SIM_TIME), ' seconds...']);
-            
-        end
 
-    else
-        disp('No selection made. Simulation cancelled.');
+        end
     end
 end
