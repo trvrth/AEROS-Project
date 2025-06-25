@@ -81,7 +81,7 @@ while SIM_ON
     
     % Sim runs until fuel runs out
     if SIM_MODE == 1
-        if (mass_fuel < 0)
+        if (mass_fuel <= 0)
             SIM_ON = false;
         end
     end
