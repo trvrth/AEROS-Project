@@ -1,4 +1,4 @@
-function [t_all, r_all, v_all, delr, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, sc_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta, orbit_window, infront)
+function [t_all, r_all, v_all, delr, delT, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, sc_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta, orbit_window, infront)
 
 % rA0 and vA0 come from the inital data
 % Thrust will stay constant for now
@@ -77,7 +77,6 @@ SIM_ON = true;
 
 % Start of the Propagation simulation
 while SIM_ON
-    fprintf('Angle to perihelion: %.2f°\n', o_angle);
     
     % Sim runs until fuel runs out
     if SIM_MODE == 1
@@ -99,6 +98,8 @@ while SIM_ON
         end
 
     end
+
+    fprintf('Angle to perihelion: %.2f°\n', o_angle);
 
     % Checks angle and applies thrust only at the angle provided
     if THRUST_ON && o_angle < angle_window
@@ -179,7 +180,8 @@ end
 % Finds Displacement of asteroid, over time
 
 delr = delr_delt .* t_all;
-
+newT = 2 * pi * sqrt(af_step^3/mu);
+delT = newT - T;
 
 % Find total ΔV imparted on asteroid
 DV_tot = i_total / (M_A + ((thrust/(g*Isp))*dt));
