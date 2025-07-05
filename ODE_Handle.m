@@ -28,6 +28,7 @@ thrust = thrust / 1000; % to convert to kg*km/s^2 (kN)
 
 mdot = thrust*2 / (g * Isp); % mass flow rate of the ion thruster
 
+
 % Changes the Mode of Simulation
 end_condition_num = 0;
 if SIM_MODE == 2
@@ -40,6 +41,8 @@ end
 F = IBFraction(R_A, d, theta);
 fprintf("Beam coupling fraction F = %.3f\n", F);
 
+DV_ideal = sc_num * F * mass_fuel * g * Isp / M_A;
+
 t_tot = 0;
 DV_tot = 0;
 
@@ -48,8 +51,15 @@ v_all = [];
 t_all = [];
 a_all = [];
 e_all = [];
-t_delr = [];
+% r_nom_all = [];
+% v_nom_all = [];
+% a_nom_all = [];
+% e_nom_all = [];
+% 
+% r_nom = rA0;
+% v_nom = vA0;
 delr_delt = [];
+delr = [0];
 
 angle_window = orbit_window;
 
@@ -77,27 +87,6 @@ SIM_ON = true;
 
 % Start of the Propagation simulation
 while SIM_ON
-    
-    % Sim runs until fuel runs out
-    if SIM_MODE == 1
-        if (mass_fuel <= 0)
-            SIM_ON = false;
-        end
-    end
-
-    % Sim runs until time runs out
-    if SIM_MODE == 2
-
-        if (mass_fuel < 0)
-            infront = 0; % makes it so that the space craft gravity is 0 since it should be away from the asteroid via RCS systems onboard
-        end
-
-        if t_tot > end_condition_num
-            disp("sim ending b/c of time constraint")
-            SIM_ON = false;
-        end
-
-    end
 
     fprintf('Angle to perihelion: %.2f°\n', o_angle);
 
@@ -126,21 +115,29 @@ while SIM_ON
         fprintf('Fuel left: %.2f\n', mass_fuel);
 
         % Updates ΔV imparted to asteroid
-        i_total = i_total + F * thrust * dt;
+        i_total = i_total + F * thrust * dt * sc_num;
 
     else
 
 	    [~, RV] = ode45(@(t, y) propagate_WOT(t, y, mu, mass_sc, d, infront), [0 dt], [rA0; vA0], options);
 
     end
+    
+    % % Nominal Propagation
+    % [~, RV_nom] = ode45(@ (t,y) propagate(t, y, mu), [0 dt], [r_nom; v_nom], options);
+    % 
+    % % Update and Extract time step for nominal propagation
+    % r_nom_all = [r_nom_all; RV_nom(end,1:3)];
+    % v_nom_all = [v_nom_all; RV(end, 4:6)];
+    % 
+    % [a_nom_step, e_nom_step, e_nom_vec] = orbit_elements(r_nom, v_nom, mu);
+    % a_nom_all = [a_nom_all; a_nom_step];
+    % e_nom_all = [e_nom_all; e_nom_step];
+    % 
+    % r_nom = RV_nom(end,1:3)';
+	% v_nom = RV_nom(end,4:6)';
 
-    % Updating State
-	rA0 = RV(end,1:3)';
-	vA0 = RV(end,4:6)';
-
-    t_tot = t_tot + dt;
-
-    % Updates and Extracts all time steps
+    % Updates and Extract time step for thrusted/simulation propagation
     r_all = [r_all; RV(end,1:3)];
     v_all = [v_all; RV(end,4:6)]; 
 
@@ -157,7 +154,6 @@ while SIM_ON
     o_angle = acosd((dot(e_unit,r_unit))); 
     
     % Updates Displacement of asteroid from original positions
-
     b = real(a0_scalar * sqrt(1 - e0_scalar^2)); % semi-minor axis
     x = (a0_scalar^2 - b^2);
     C = real(pi * (a0_scalar + b) * (1 + (3*x^2)/(10 + sqrt(4-(3*x^2))))); % circumference of undeflected orbit
@@ -165,7 +161,36 @@ while SIM_ON
     af_step = a_step;
     dela_step = af_step - a0_scalar;
     delr_step = 1.5 * C * (dela_step/a0_scalar) * (1/T);
-    delr_delt = [delr_delt; delr_step];
+    % delr_delt = [delr_delt; delr_step];
+
+    % delr = [delr; delr_step * dt]; % delr(end) + 
+
+    % Updating State
+	rA0 = RV(end,1:3)';
+	vA0 = RV(end,4:6)';
+
+    t_tot = t_tot + dt;
+
+    % Sim runs until fuel runs out
+    if SIM_MODE == 1
+        if (mass_fuel <= 0)
+            SIM_ON = false;
+        end
+    end
+
+    % Sim runs until time runs out
+    if SIM_MODE == 2
+
+        if (mass_fuel < 0)
+            infront = 0; % makes it so that the space craft gravity is 0 since it should be away from the asteroid via RCS systems onboard
+        end
+
+        if t_tot > end_condition_num
+            disp("sim ending b/c of time constraint")
+            SIM_ON = false;
+        end
+
+    end
 
     if first_loop
     fprintf('Initial a_thrust: %.3e km/s²\n', thrust / mass_sc);
@@ -178,12 +203,25 @@ while SIM_ON
 end
 
 % Finds Displacement of asteroid, over time
-
-delr = delr_delt .* t_all;
+delr = delr_step * t_all(end,1);
 newT = 2 * pi * sqrt(af_step^3/mu);
 delT = newT - T;
 
 % Find total ΔV imparted on asteroid
-DV_tot = i_total / (M_A + ((thrust/(g*Isp))*dt));
+DV_tot = i_total / (M_A); %+ ((thrust/(g*Isp))*dt))
 
+% a_prop = a_all(end,1);
+% e_prop = e_all(end,1);
+% a_nom = a_nom_all(end,1);
+% e_nom = e_nom_all(end,1);
+% 
+% r = a_nom*(1-e_nom^2)/(1 + e_nom*cosd(o_angle));
+% r_prime = a_prop*(1-e_prop^2)/(1 + e_prop*cosd(o_angle));
+% delr = r_prime - r;
+
+% % Verification calculation of max ideal delta V (Print Out)
+% fprintf("Ideal maximum ΔV (with F): %.6f m/s\n", DV_ideal * 1000);
+fprintf("The delta a at end of sim: %.3f km\n",dela_step)
+delr_test = 1.5 * C * (dela_step/a0_scalar) * (t_all(end,1)/T);
+fprintf("The delta r at end of sim: %.3f km\n", delr_test)
 return

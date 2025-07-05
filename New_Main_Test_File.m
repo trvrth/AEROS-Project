@@ -26,8 +26,9 @@ Asteroid_Radius = 278.87; % 780 meter diameter
 Standoff_Distance = 1000; % pretty close from asteroid surface
 Ion_Beam_Divergence_Angle = 5; % In degrees
 
+% Initial Conditions (km)
 EarthIC = [6.82500E+07; 1.30864E+08; 1.81329E+04; -2.67639E+01; 1.38981E+01; -9.22794E-04];
-DidymosIC = [-9.017346132883599E+07;  2.016178218722010E+08; -4.100642351379222E+07; -1.746107974315678E+01; -1.838532402937617E+01;  1.001923496246683E+00]; % Initial Conditions
+AsteroidIC = [-9.017346132883599E+07;  2.016178218722010E+08; -4.100642351379222E+07; -1.746107974315678E+01; -1.838532402937617E+01;  1.001923496246683E+00]; 
 
 % Infront Logic
 if SC_POS
@@ -36,8 +37,9 @@ else
     Infront = -1; % infront is false
 end
 
-rA0 = DidymosIC(1:3, 1);
-vA0 = DidymosIC(4:6, 1);
+% Allocating IC and Parameters
+rA0 = AsteroidIC(1:3, 1);
+vA0 = AsteroidIC(4:6, 1);
 
 params = {Thrust, Array_Num, Num_SC, dt, ...
     mass_fuel_sc, mass_sc, Isp, M_A, Asteroid_Radius, Standoff_Distance, ... 
@@ -55,9 +57,9 @@ v_final = v(end,:)';
 
 RV_finalIC = [r_final, v_final];
 
-% ODE45 Propagation of Earth and Didymos with no force, then the ODE_Handle of Didymos with Ion Force. 
+% ODE45 Propagation of Earth and Asteroid with no force, then the ODE_Handle of Didymos with Ion Force. 
 [Earth_t, Earth_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, EarthIC, options);
-[Didymos_t, Didymos_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, DidymosIC, options);
+[Asteroid_t, Asteroid_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, AsteroidIC, options);
 [~, final_RV] = ode45(@(t, y) propagate(t, y, mu), 0:dt:7e7, RV_finalIC, options);
 
 % Plotting the 3D view of the orbits (the orbits are very close to one another)
@@ -67,13 +69,13 @@ hold on;
 view(3)
 axis equal;
 xlabel('X'); ylabel('Y'); zlabel('Z');
-title('Didymos Trajectory');
+title('Asteroid Trajectory');
 
 plot3(0, 0, 0, 'yo', 'MarkerSize', 10, 'MarkerFaceColor', 'y', 'DisplayName', 'Sun');
 
 plot3(Earth_RV(:,1), Earth_RV(:,2), Earth_RV(:,3), 'b','DisplayName', 'Earth'); 
-plot3(Didymos_RV(:,1), Didymos_RV(:,2), Didymos_RV(:,3), 'r', 'DisplayName', 'Didymos (No Thrust)', lineWidth=0.1);
-plot3(final_RV(:,1), final_RV(:,2), final_RV(:,3), 'g', 'DisplayName', 'Didymos (With Thrust)', lineWidth=0.1);
+plot3(Asteroid_RV(:,1), Asteroid_RV(:,2), Asteroid_RV(:,3), 'r', 'DisplayName', 'Asteroid (No Thrust)', lineWidth=0.1);
+plot3(final_RV(:,1), final_RV(:,2), final_RV(:,3), 'g', 'DisplayName', 'Asteroid (With Thrust)', lineWidth=0.1);
 
 legend show;
 
@@ -103,7 +105,7 @@ title('Eccentricity over time');
 % Output Semi Major Axis, total ΔV, and operating time
 delta_a_m = (a(end) - a(1));
 fprintf('Change in semi-major axis: %.3f km\n', delta_a_m);
-fprintf('Total Position Difference Distance: %.3f km\n', Delta_R(end,1));
+fprintf('Total Position Difference Distance at the end of Sim: %.3f km\n', Delta_R);
 fprintf('Total ΔV imparted: %.3f mm/s\n', DV_total*1e6);
 fprintf('Total Change in Period (ΔT): %.3f s\n', Delta_T);
 fprintf('Operation time: %.2f days\n', t(end) / 86400);
