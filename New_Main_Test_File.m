@@ -6,15 +6,15 @@ close all;
 sim_menu()
 global SC_POS
 
-M_A = 6.41e9; % 528 billion kilograms 
+M_A = 6.41e9; % Asteroid Mass
 g = 0.00980665; % km/s^2
 mu = 1.32712E+11; % km^3/s^2
-mass_sc = 8863; % total mass of the space craft (including fuel)
-mass_fuel_sc = 5199; % mass of xenon on space craft
+mass_sc = 5867; % total mass of the space craft (including fuel)
+mass_fuel_sc = 2203; % mass of xenon on space craft
 input_power = 7.78; % in KW, power required for each thruster
 Isp = 4178; % seconds (Max Throttle of Next-C)
 Thrust = 235e-3; % Newtons of Force (Thrust)
-dt = 36000; % step size
+dt = 3600; % step size
 Array_Num = 3; % number of thrusters firing towards the asteroid. 
 Num_SC = 2; %number of identical space craft.
 Orbit_Window = 180; % window of orbit for thrusters to turn on, in degrees. 
@@ -22,12 +22,12 @@ Orbit_Window = 180; % window of orbit for thrusters to turn on, in degrees.
 tol = 1e-12; % acceptable tolerance
 options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
 
-Asteroid_Radius = 278.87; % 780 meter diameter 
+Asteroid_Radius = 150/2; % 780 meter diameter 
 Standoff_Distance = 1000; % pretty close from asteroid surface
 Ion_Beam_Divergence_Angle = 5; % In degrees
 
-% Initial Conditions (km)
-EarthIC = [6.82500E+07; 1.30864E+08; 1.81329E+04; -2.67639E+01; 1.38981E+01; -9.22794E-04];
+% Initial Conditions (km) at arrival date
+EarthIC = [3.690957973215500E+07; -1.475574746115367E+08;  1.077172502730787E+04; 2.842522132509458E+01;  7.115603539128933E+00;  2.396611872157450E-05];
 AsteroidIC = [-9.017346132883599E+07;  2.016178218722010E+08; -4.100642351379222E+07; -1.746107974315678E+01; -1.838532402937617E+01;  1.001923496246683E+00]; 
 
 % Infront Logic
@@ -46,7 +46,7 @@ params = {Thrust, Array_Num, Num_SC, dt, ...
     Ion_Beam_Divergence_Angle, Orbit_Window, Infront};
 
 % Call ODE_Handle
-[t, r, v, Delta_R, Delta_T, DV_total, a, e] = ODE_Handle(rA0, vA0, params{:});
+[t, r, v, Delta_R, Delta_T, z, DV_total, a, e] = ODE_Handle(rA0, vA0, params{:});
 
 % Combines r and v into RV so it can be easily plotted in 3D.
 RV = [r v];
@@ -106,6 +106,7 @@ title('Eccentricity over time');
 delta_a_m = (a(end) - a(1));
 fprintf('Change in semi-major axis: %.3f km\n', delta_a_m);
 fprintf('Total Position Difference Distance at the end of Sim: %.3f km\n', Delta_R);
+fprintf('Total Deflection (zeta): %.3f km\n', z(end,1));
 fprintf('Total ΔV imparted: %.3f mm/s\n', DV_total*1e6);
-fprintf('Total Change in Period (ΔT): %.3f s\n', Delta_T);
+fprintf('Total Change in Period (ΔT): %.3f s\n', Delta_T(end,1));
 fprintf('Operation time: %.2f days\n', t(end) / 86400);
