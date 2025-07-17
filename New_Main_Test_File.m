@@ -17,7 +17,7 @@ Thrust = 235e-3; % Newtons of Force (Thrust)
 dt = 3600; % step size
 Array_Num = 3; % number of thrusters firing towards the asteroid. 
 Num_SC = 2; %number of identical space craft.
-Orbit_Window = 180; % window of orbit for thrusters to turn on, in degrees. 
+Orbit_Window = 90; % window of orbit for thrusters to turn on, in degrees. 
 
 tol = 1e-12; % acceptable tolerance
 options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
@@ -90,17 +90,24 @@ legend show;
 % title('Deflection Displacement over time');
 figure;
 
-subplot(2,1,1);
+subplot(3,1,1);
 plot(t / 86400, a);
 xlabel('Time [days]');
 ylabel('Semi-major Axis [km]');
 title('Orbital Change Due to Ion Beam');
 
-subplot(2,1,2);
+subplot(3,1,2);
 plot(t / 86400, e);
 xlabel('Time [days]');
 ylabel('Eccentricity');
 title('Eccentricity over time');
+
+subplot(3,1,3);
+plot(t/ 86400, z);
+xlabel('Time [days]');
+ylabel('Zeta [km]');
+title('B-Plane Deflection');
+
 
 % Output Semi Major Axis, total ΔV, and operating time
 delta_a_m = (a(end) - a(1));

@@ -28,6 +28,8 @@ total_thrust = thrust*sc_num; % account for number of space craft
 
 mdot = thrust*2 / (g * Isp); % mass flow rate of the ion thruster per space craft
 
+total_thrust_time = 0;
+
 % B-Plane Deflection Set up
 D_time = 277689600; %time until it hits earth from arrival date 7/6/2032 -> 275721360, 
 
@@ -54,26 +56,21 @@ end
 F = .95;
 fprintf("Beam coupling fraction F = %.3f\n", F);
 
-% DV_ideal = sc_num * F * mass_fuel * g * Isp / M_A;
 
 coasting_started = false;
 
-r_all = [];
-v_all = [];
-t_all = [];
-a_all = [];
-e_all = [];
-% r_nom_all = [];
-% v_nom_all = [];
-% a_nom_all = [];
-% e_nom_all = [];
-% 
-% r_nom = rA0;
-% v_nom = vA0;
-delr_delt = [];
-delr = [0];
-delT = [0];
-Z_all = [0];
+chunkSize = 10000;
+step = 1;
+r_all = zeros(chunkSize, 3);
+v_all = zeros(chunkSize, 3);
+r_nom_all = zeros(chunkSize, 3);
+v_nom_all = zeros(chunkSize, 3);
+t_all = zeros(chunkSize, 1);
+a_all = zeros(chunkSize, 1);
+e_all = zeros(chunkSize, 1);
+delT = zeros(chunkSize, 1);
+Z_all = zeros(chunkSize, 1);
+
 angle_window = orbit_window;
 
 i_total = 0; % total impulse before dividing by M_A
@@ -95,10 +92,14 @@ T = 2 * pi * sqrt(a0_scalar^3/mu); % period of undeflected orbit
 
 % Intialization
 t_tot = 0;
-DV_tot = 0;
-Z_total = 0;
-Delta_T_total = 0;
-prevT = T;
+r_nom = rA0;
+v_nom = vA0;
+Z_all_thrust_end = 0;
+Z_all_thrust = 0;
+% DV_tot = 0;
+% Z_total = 0;
+% Delta_T_total = 0;
+% prevT = T;
 
 fprintf('[t = %6d s] mass_sc = %.2f kg, a_thrust = %.2e km/s^2\n', t_tot, mass_sc, total_thrust / mass_sc);
 % Condition Variable
@@ -135,10 +136,13 @@ while SIM_ON
             fprintf('Fuel exhausted\n');
             THRUST_ON = false;  % disables thrust globally
             coasting_started = true;
+            firstcoast = true;
             infront = 0;
         end
 
         fprintf('Fuel left: %.2f\n', mass_fuel);
+
+        total_thrust_time = total_thrust_time + dt_actual;
 
         % Updates ΔV imparted to asteroid
         i_total = i_total + F * total_thrust * dt_actual;
@@ -155,36 +159,43 @@ while SIM_ON
 
     t_tot = t_tot + dt_actual; % might need to come back to this for orbit window
 
-    % % Nominal Propagation
-    % [~, RV_nom] = ode45(@ (t,y) propagate(t, y, mu), [0 dt], [r_nom; v_nom], options);
-    % 
-    % % Update and Extract time step for nominal propagation
-    % r_nom_all = [r_nom_all; RV_nom(end,1:3)];
-    % v_nom_all = [v_nom_all; RV(end, 4:6)];
-    % 
-    % [a_nom_step, e_nom_step, e_nom_vec] = orbit_elements(r_nom, v_nom, mu);
-    % a_nom_all = [a_nom_all; a_nom_step];
-    % e_nom_all = [e_nom_all; e_nom_step];
-    % 
-    % r_nom = RV_nom(end,1:3)';
-	% v_nom = RV_nom(end,4:6)';
+    if step > size(r_all, 1)
+        r_all(end+1:end+chunkSize, :) = 0;
+        v_all(end+1:end+chunkSize, :) = 0;
+        r_nom_all(end+1:end+chunkSize, :) = 0;
+        v_nom_all(end+1:end+chunkSize, :) = 0;
+        t_all(end+1:end+chunkSize, 1) = 0;
+        a_all(end+1:end+chunkSize, 1) = 0;
+        e_all(end+1:end+chunkSize, 1) = 0;
+        delT(end+1:end+chunkSize, 1) = 0;
+        Z_all(end+1:end+chunkSize, 1) = 0;
+    end
 
     % Updates and Extract time step for thrusted/simulation propagation
-    r_all = [r_all; RV(end,1:3)];
-    v_all = [v_all; RV(end,4:6)]; 
+    r_all(step,:) = RV(end,1:3);
+    v_all(step,:) = RV(end,4:6); 
 
-    t_all = [t_all; t_tot]; % time steps
+    t_all(step,:) =  t_tot; % time steps
 
     [a_step, e_step, e_vec] = orbit_elements(rA0, vA0, mu);
-    a_all = [a_all; a_step];
-    e_all = [e_all; e_step];
+    a_all(step,:) = a_step;
+    e_all(step,:) = e_step;
     
     % This updates the angle of the orbit
-    r_vec = r_all(end, :)';
+    r_vec = r_all(step, :)';
     e_unit = e_vec/norm(e_vec);
     r_unit = r_vec/norm(r_vec);
     o_angle = acosd((dot(e_unit,r_unit))); 
     
+    % Nominal Propagation
+    [~, RV_nom] = ode45(@ (t,y) propagate(t, y, mu), [0 dt], [r_nom; v_nom], options);
+    
+    r_nom_all(step, :) =  RV_nom(end, 1:3);
+    v_nom_all(step, :) =  RV_nom(end, 4:6);
+    r_nom = RV_nom(end,1:3)';
+    v_nom =  RV_nom(end, 4:6)';
+
+
     % Updates Displacement of asteroid from original positions
     b = real(a0_scalar * sqrt(1 - e0_scalar^2)); % semi-minor axis
     x = (a0_scalar^2 - b^2);
@@ -193,64 +204,69 @@ while SIM_ON
     af_step = a_step;
     dela_step = af_step - a0_scalar;
     delr_step = 1.5 * C * (dela_step/a0_scalar) * (1/T);
-    % delr_delt = [delr_delt; delr_step];
 
-    % delr = [delr; delr_step * dt]; % delr(end) + 
-    
+    % if coasting_started && firstcoast
+    %     V_A_coast = v_all(step,:);
+    %     V_inf_coast =  V_A_coast - V_E';
+    %     r_coast = r_all(step,:);
+    %     y_hat = V_inf_coast / norm(V_inf_coast);  % incoming direction (parallel to V_inf)
+    %     z_hat = cross(r_coast, V_inf_coast); 
+    %     z_hat = z_hat / norm(z_hat);  % normal to orbit plane
+    %     x_hat = cross(y_hat, z_hat);  % completes the right-handed system
+    %     T_HCI_B = [x_hat'; y_hat'; z_hat'];
+    %     firstcoast = false;
+    % end
+    if coasting_started && firstcoast
+        Z_all_thrust_end = Z_total;  % last deflection from thrust method
+        r_nom_thrust_end = r_nom_all(step,:);
+        r_thrust_end = r_all(step,:);
+    end
     % B-Plane Deflection
     if coasting_started
-        newT = 2 * pi * sqrt(af_step^3/mu);
-        deT = newT - prevT;
-        prevT = newT; %saves new T to be used to make deT
-        delT = [delT; Delta_T_total];
-        fprintf("Delta T: %.3e s\n", delT(end));
-
-        D_remaining = max(D_time - t_tot, 0);
-        Z_step = deT*(D_remaining/T)*V_E_B_xz;
-        Z_total = Z_total + Z_step;
-        Z_all = [Z_all; Z_total];
-        fprintf('B-Plane Deflection: %.3f km\n', Z_all(end));
+        delta_r_nominal = r_nom_all(step,:) - r_nom_thrust_end;
+        delta_r_deflected = r_all(step,:) - r_thrust_end;
+        delta_r_coast = delta_r_deflected - delta_r_nominal;
+        dr_bplane = T_HCI_B .* delta_r_coast;
+        delta_r_bplane_step = norm([dr_bplane(1); dr_bplane(3)]);
+        Z_all(step, :) = Z_all_thrust_end + delta_r_bplane_step;  % magnitude in X-Z plane
+        fprintf('B-Plane Deflection: %.3f km\n', Z_all(step));
+        Z_all_thrust = Z_all(step,:);
     else
-        newT = 2 * pi * sqrt(af_step^3/mu);
-        deT = newT - prevT;
-        prevT = newT; %saves new T to be used to make deT
-        
-        Delta_T_total = Delta_T_total + deT;
-        delT = [delT; Delta_T_total];
-        fprintf("Delta T: %.3e s\n", delT(end));
+        Delta_T_total = (2 * pi * sqrt(af_step^3/mu)) - T;
+        delT(step,:) = Delta_T_total;
+        fprintf("Delta T: %.3e s\n", delT(step));
         
         D_remaining = max(D_time - t_tot, 0);
-        Z_step = deT*(D_remaining/T)*V_E_B_xz;
-        Z_total = Z_total + Z_step;
-        Z_all = [Z_all; Z_total];
-        fprintf('B-Plane Deflection: %.3f km\n', Z_all(end));
+        Z_total = Delta_T_total*(D_remaining/T)*V_E_B_xz;
+        Z_all(step, :) =  Z_total;
+        fprintf('B-Plane Deflection: %.3f km\n', Z_all(step));
+        Z_all_thrust = Z_all(step,:);
+        Z_all_thrust_end = Z_all(step,:);
     end
 
     % fprintf("ΔT = %.3f s | ΔZ_step = %.3f km | Z_total = %.3f km\n", Delta_T, Z_step, Z_total);
+    
+    % Updating Step
+    step = step + 1;
+    
+    if o_angle > angle_window
+        coasting_started = true;
+        firstcoast = true;
+        infront = 0;
+    else
+        coasting_started = false;
+        infront = 1;
+    end  
 
     % Sim runs until fuel runs out
     if SIM_MODE == 1
-        % if (mass_fuel <= 0)
-        %     SIM_ON = false;
-        % end
-    end
-
-    if mass_fuel < 0
-        infront = 0;
+        if (mass_fuel <= 0)
+            SIM_ON = false;
+        end
     end
 
     % Sim runs until time runs out
     if SIM_MODE == 2
-
-        if (mass_fuel < 0)
-            % makes it so that the space craft gravity is 0 since it should be away from the asteroid via RCS systems onboard
-        end
-
-        if o_angle > angle_window || mass_fuel < 0
-            coasting_started = true;
-        else
-            coasting_started = false;
-        end
  
         if t_tot > end_condition_num
             disp("sim ending b/c of time constraint")
@@ -280,6 +296,17 @@ while SIM_ON
 
 end
 
+% Array Truncation
+r_all = r_all(1:step-1, :);
+v_all = v_all(1:step-1, :);
+r_nom_all = r_nom_all(1:step-1, :);
+v_nom_all = v_nom_all(1:step-1, :);
+t_all = t_all(1:step-1, 1);
+a_all = a_all(1:step-1, 1);
+e_all = e_all(1:step-1, 1);
+delT  = delT(1:step-1, 1);
+Z_all = Z_all(1:step-1, 1);
+
 % Finds Displacement of asteroid, over time
 delr = delr_step * t_all(end,1);
 
@@ -296,7 +323,7 @@ fprintf('B-Plane Deflection Coasting END: %.3f km\n', Z_total);
 % a_prop = a_all(end,1);
 % e_prop = e_all(end,1);
 % a_nom = a_nom_all(end,1);
-% e_nom = e_nom_all(end,1);
+% e_nom = e_nom_all(end,1);4
 % 
 % r = a_nom*(1-e_nom^2)/(1 + e_nom*cosd(o_angle));
 % r_prime = a_prop*(1-e_prop^2)/(1 + e_prop*cosd(o_angle));
@@ -313,6 +340,7 @@ fprintf('B-Plane Deflection Coasting END: %.3f km\n', Z_total);
 
 % % Verification calculation of max ideal delta V (Print Out)
 fprintf("I_total: %.3f \n", i_total);
+fprintf("Total Thrust Time (days): %.3f \n",  total_thrust_time/86400);
 % fprintf("Ideal maximum ΔV (with F): %.6f m/s\n", DV_ideal * 1000);
 % fprintf("The delta a at end of sim: %.3f km\n",dela_step);
 % delr_test = 1.5 * C * (dela_step/a0_scalar) * (t_all(end,1)/T);
