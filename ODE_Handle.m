@@ -28,8 +28,6 @@ total_thrust = thrust*sc_num; % account for number of space craft
 
 mdot = thrust*2 / (g * Isp); % mass flow rate of the ion thruster per space craft
 
-total_thrust_time = 0;
-
 % B-Plane Deflection Set up
 D_time = 277689600; %time until it hits earth from arrival date 7/6/2032 -> 275721360, 
 
@@ -56,26 +54,15 @@ end
 F = .95;
 fprintf("Beam coupling fraction F = %.3f\n", F);
 
-
-coasting_started = false;
-
 chunkSize = 10000;
 step = 1;
 r_all = zeros(chunkSize, 3);
 v_all = zeros(chunkSize, 3);
-r_nom_all = zeros(chunkSize, 3);
-v_nom_all = zeros(chunkSize, 3);
 t_all = zeros(chunkSize, 1);
 a_all = zeros(chunkSize, 1);
 e_all = zeros(chunkSize, 1);
 delT = zeros(chunkSize, 1);
 Z_all = zeros(chunkSize, 1);
-
-angle_window = orbit_window;
-
-i_total = 0; % total impulse before dividing by M_A
-
-first_loop = true;
 
 %Calculate starting o_angle
 [a0_scalar, e0_scalar, e0_vec] = orbit_elements(rA0, vA0, mu);
@@ -92,29 +79,46 @@ T = 2 * pi * sqrt(a0_scalar^3/mu); % period of undeflected orbit
 
 % Intialization
 t_tot = 0;
+total_thrust_time = 0;
+i_total = 0;
 r_nom = rA0;
 v_nom = vA0;
-Z_all_thrust_end = 0;
-Z_all_thrust = 0;
-% DV_tot = 0;
-% Z_total = 0;
-% Delta_T_total = 0;
-% prevT = T;
+first_loop = true;
+coasting_started = false;
+thrust_again = false;
+t_thrust_end = 0;
+Z_accumulated = 0;
+Z_offset = 0;
+Z_diff = 0;
+grav = 1;
+angle_window = orbit_window;
 
 fprintf('[t = %6d s] mass_sc = %.2f kg, a_thrust = %.2e km/s^2\n', t_tot, mass_sc, total_thrust / mass_sc);
 % Condition Variable
 SIM_ON = true;
 
-% Start of the Propagation simulation
+% --- Start of the Propagation simulation ---
 while SIM_ON
 
     % fprintf('Time: %.2f days | Fuel left: %.2f kg | Z = %.2f km\n', t_tot/86400, mass_fuel, Z_total);
     fprintf('Angle to perihelion: %.2f°\n', o_angle);
 
+    if o_angle > angle_window
+        if ~coasting_started
+            coasting_started = true;
+            grav = 0;
+            t_thrust_end = t_tot;
+            fprintf('Coasting started at t = %.2f s\n', t_thrust_end);
+        end
+    else
+        coasting_started = false;
+        grav = 1;
+    end      
+   
     % Checks angle and applies thrust only at the angle provided
-    if THRUST_ON && o_angle < angle_window
+    if THRUST_ON && o_angle <= angle_window
 
-        [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, total_thrust, M_A, F, mass_sc*sc_num, d, infront), [0 dt], [rA0; vA0], options);
+        [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, total_thrust, M_A, F, mass_sc*sc_num, d, grav*infront), [0 dt], [rA0; vA0], options);
         fprintf('thrust applied!');
        
 
@@ -135,9 +139,6 @@ while SIM_ON
         if mass_fuel <= 0
             fprintf('Fuel exhausted\n');
             THRUST_ON = false;  % disables thrust globally
-            coasting_started = true;
-            firstcoast = true;
-            infront = 0;
         end
 
         fprintf('Fuel left: %.2f\n', mass_fuel);
@@ -149,7 +150,7 @@ while SIM_ON
 
     else
 
-	    [~, RV] = ode45(@(t, y) propagate_WOT(t, y, mu, mass_sc*sc_num, d, infront), [0 dt], [rA0; vA0], options);
+	    [~, RV] = ode45(@(t, y) propagate_WOT(t, y, mu, mass_sc*sc_num, d, grav*infront), [0 dt], [rA0; vA0], options);
         dt_actual = dt;
     end
 
@@ -162,8 +163,6 @@ while SIM_ON
     if step > size(r_all, 1)
         r_all(end+1:end+chunkSize, :) = 0;
         v_all(end+1:end+chunkSize, :) = 0;
-        r_nom_all(end+1:end+chunkSize, :) = 0;
-        v_nom_all(end+1:end+chunkSize, :) = 0;
         t_all(end+1:end+chunkSize, 1) = 0;
         a_all(end+1:end+chunkSize, 1) = 0;
         e_all(end+1:end+chunkSize, 1) = 0;
@@ -205,32 +204,22 @@ while SIM_ON
     dela_step = af_step - a0_scalar;
     delr_step = 1.5 * C * (dela_step/a0_scalar) * (1/T);
 
-    % if coasting_started && firstcoast
-    %     V_A_coast = v_all(step,:);
-    %     V_inf_coast =  V_A_coast - V_E';
-    %     r_coast = r_all(step,:);
-    %     y_hat = V_inf_coast / norm(V_inf_coast);  % incoming direction (parallel to V_inf)
-    %     z_hat = cross(r_coast, V_inf_coast); 
-    %     z_hat = z_hat / norm(z_hat);  % normal to orbit plane
-    %     x_hat = cross(y_hat, z_hat);  % completes the right-handed system
-    %     T_HCI_B = [x_hat'; y_hat'; z_hat'];
-    %     firstcoast = false;
-    % end
-    if coasting_started && firstcoast
-        Z_all_thrust_end = Z_total;  % last deflection from thrust method
-        r_nom_thrust_end = r_nom_all(step,:);
-        r_thrust_end = r_all(step,:);
-    end
-    % B-Plane Deflection
+
+       % B-Plane Deflection
     if coasting_started
-        delta_r_nominal = r_nom_all(step,:) - r_nom_thrust_end;
-        delta_r_deflected = r_all(step,:) - r_thrust_end;
-        delta_r_coast = delta_r_deflected - delta_r_nominal;
-        dr_bplane = T_HCI_B .* delta_r_coast;
-        delta_r_bplane_step = norm([dr_bplane(1); dr_bplane(3)]);
-        Z_all(step, :) = Z_all_thrust_end + delta_r_bplane_step;  % magnitude in X-Z plane
-        fprintf('B-Plane Deflection: %.3f km\n', Z_all(step));
-        Z_all_thrust = Z_all(step,:);
+        % Time since thrust ended (elapsed coasting time)
+        t_since_thrust = t_tot - t_thrust_end;
+        Delta_T_total = (2 * pi * sqrt(af_step^3 / mu)) - T;
+        delT(step,:) = Delta_T_total;
+        fprintf("Delta T: %.3e s\n", delT(step));
+
+        Z_total_coast = Delta_T_total * (t_since_thrust / T) * V_E_B_xz;
+
+        Z_all(step) = Z_accumulated + Z_total_coast;
+    
+        fprintf('Coasting deflection at t=%.2f s: %.3f km\n', t_tot, Z_all(step));
+        Z_offset = Z_all(step);
+        thrust_again = true;
     else
         Delta_T_total = (2 * pi * sqrt(af_step^3/mu)) - T;
         delT(step,:) = Delta_T_total;
@@ -238,26 +227,18 @@ while SIM_ON
         
         D_remaining = max(D_time - t_tot, 0);
         Z_total = Delta_T_total*(D_remaining/T)*V_E_B_xz;
-        Z_all(step, :) =  Z_total;
+        if thrust_again
+            Z_diff = Z_offset - Z_total;
+            thrust_again = false;
+        end
+        Z_all(step) = Z_total + Z_diff;
+        Z_accumulated = Z_all(step,:);
         fprintf('B-Plane Deflection: %.3f km\n', Z_all(step));
-        Z_all_thrust = Z_all(step,:);
-        Z_all_thrust_end = Z_all(step,:);
     end
-
-    % fprintf("ΔT = %.3f s | ΔZ_step = %.3f km | Z_total = %.3f km\n", Delta_T, Z_step, Z_total);
     
     % Updating Step
     step = step + 1;
-    
-    if o_angle > angle_window
-        coasting_started = true;
-        firstcoast = true;
-        infront = 0;
-    else
-        coasting_started = false;
-        infront = 1;
-    end  
-
+   
     % Sim runs until fuel runs out
     if SIM_MODE == 1
         if (mass_fuel <= 0)
@@ -299,8 +280,6 @@ end
 % Array Truncation
 r_all = r_all(1:step-1, :);
 v_all = v_all(1:step-1, :);
-r_nom_all = r_nom_all(1:step-1, :);
-v_nom_all = v_nom_all(1:step-1, :);
 t_all = t_all(1:step-1, 1);
 a_all = a_all(1:step-1, 1);
 e_all = e_all(1:step-1, 1);
@@ -320,30 +299,8 @@ D_remaining = max(D_time - t_tot, 0);
 Z_total = delT(end)*(D_remaining/T)*V_E_B_xz;
 fprintf('B-Plane Deflection Coasting END: %.3f km\n', Z_total);
 
-% a_prop = a_all(end,1);
-% e_prop = e_all(end,1);
-% a_nom = a_nom_all(end,1);
-% e_nom = e_nom_all(end,1);4
-% 
-% r = a_nom*(1-e_nom^2)/(1 + e_nom*cosd(o_angle));
-% r_prime = a_prop*(1-e_prop^2)/(1 + e_prop*cosd(o_angle));
-% delr = r_prime - r;
-% length(Z_all)
-% length(t_all)
-% figure;
-% 
-% plot(t_all / 86400, Z_all);
-% xlabel('Time [days]');
-% ylabel('Deflection [km]');
-% title('B-Plane Deflection');
-
 
 % % Verification calculation of max ideal delta V (Print Out)
 fprintf("I_total: %.3f \n", i_total);
 fprintf("Total Thrust Time (days): %.3f \n",  total_thrust_time/86400);
-% fprintf("Ideal maximum ΔV (with F): %.6f m/s\n", DV_ideal * 1000);
-% fprintf("The delta a at end of sim: %.3f km\n",dela_step);
-% delr_test = 1.5 * C * (dela_step/a0_scalar) * (t_all(end,1)/T);
-% fprintf("The delta r at end of sim: %.3f km\n", delr_test);
-% fprintf('B-Plane Deflection: %.3f km\n', Z_all(end));
 return

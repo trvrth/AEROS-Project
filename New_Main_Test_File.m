@@ -117,3 +117,4 @@ fprintf('Total Deflection (zeta): %.3f km\n', z(end,1));
 fprintf('Total ΔV imparted: %.3f mm/s\n', DV_total*1e6);
 fprintf('Total Change in Period (ΔT): %.3f s\n', Delta_T(end,1));
 fprintf('Operation time: %.2f days\n', t(end) / 86400);
+fprintf('Operation time: %.2f years\n', t(end) / 86400/365.5);
