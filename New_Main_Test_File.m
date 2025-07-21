@@ -17,7 +17,7 @@ Thrust = 235e-3; % Newtons of Force (Thrust)
 dt = 3600; % step size
 Array_Num = 3; % number of thrusters firing towards the asteroid. 
 Num_SC = 2; %number of identical space craft.
-Orbit_Window = 90; % window of orbit for thrusters to turn on, in degrees. 
+Orbit_Window = 180; % window of orbit for thrusters to turn on, in degrees. 
 
 tol = 1e-12; % acceptable tolerance
 options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
@@ -28,7 +28,7 @@ Ion_Beam_Divergence_Angle = 5; % In degrees
 
 % Initial Conditions (km) at arrival date
 EarthIC = [3.690957973215500E+07; -1.475574746115367E+08;  1.077172502730787E+04; 2.842522132509458E+01;  7.115603539128933E+00;  2.396611872157450E-05];
-AsteroidIC = [-9.017346132883599E+07;  2.016178218722010E+08; -4.100642351379222E+07; -1.746107974315678E+01; -1.838532402937617E+01;  1.001923496246683E+00]; 
+AsteroidIC = [-9.017346132883599E+07;  2.016178218722010E+08; -4.100642351379222E+07; -1.746107974315678E+01; -1.838532402937617E+01;  1.001923496246683E+00]; %[1.997373232035084E+08;  2.641946796052009E+08; -1.984470984568058E+07; -1.448399073151553E+01;  6.764039646884344E+00; -2.597612359416662E+00];
 
 % Infront Logic
 if SC_POS
