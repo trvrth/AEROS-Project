@@ -17,7 +17,7 @@ Thrust = 235e-3; % Newtons of Force (Thrust)
 dt = 3600; % step size
 Array_Num = 3; % number of thrusters firing towards the asteroid. 
 Num_SC = 2; %number of identical space craft.
-Orbit_Window = 180; % window of orbit for thrusters to turn on, in degrees. 
+Orbit_Window = 180; % window of orbit for thrusters to turn on, in degrees. [15 30 45 60 75 90 105 120 135 150 165 180]
 
 tol = 1e-12; % acceptable tolerance
 options = odeset('RelTol', tol, 'AbsTol', tol); % ODE45 options
@@ -28,18 +28,28 @@ Ion_Beam_Divergence_Angle = 5; % In degrees
 
 % Initial Conditions (km) at arrival date
 EarthIC = [3.690957973215500E+07; -1.475574746115367E+08;  1.077172502730787E+04; 2.842522132509458E+01;  7.115603539128933E+00;  2.396611872157450E-05];
-AsteroidIC = [-9.017346132883599E+07;  2.016178218722010E+08; -4.100642351379222E+07; -1.746107974315678E+01; -1.838532402937617E+01;  1.001923496246683E+00]; %[1.997373232035084E+08;  2.641946796052009E+08; -1.984470984568058E+07; -1.448399073151553E+01;  6.764039646884344E+00; -2.597612359416662E+00];
+AsteroidIC = [2.085409864921798E+08 -6.755898271337336E+07  1.636125243636099E+07 2.155614435767819E+01  1.839839777092239E+01  3.034356989495094E+00]';
+
+%PDC17[2.085409864921798E+08 -6.755898271337336E+07  1.636125243636099E+07 2.155614435767819E+01  1.839839777092239E+01  3.034356989495094E+00]'; 
+%PDC19[1.023944620332398E+08  4.149891804440932E+08  8.479780842274323E+07 -1.100190807440403E+01  3.922612905200738E+00  3.231573331512752E+00]';
+%PDC21 [5.992772057267997E+07 -1.274572943737215E+08  3.960425319479375E+07 2.771870564346353E+01  1.845154978932883E+01 -1.024630692361653E+00]';
+%PDC23[-1.468739611664777E+08 -2.574435782617420E+07 -8.985398094612118E+06 7.270805583192655E+00 -2.831178573489390E+01  5.059703914974859E+00]'; 
+%PDC25[-9.017346132883599E+07  2.016178218722010E+08 -4.100642351379222E+07 -1.746107974315678E+01 -1.838532402937617E+01  1.001923496246683E+00]; 
+
+% PDC25 20 years before impact [-1.254654952185972E+08 -8.307045278563859E+07 -3.924400568292141E+05 1.915074319955068E+01 -2.865859253112720E+01  6.572732154554944E+00]';
+% PDC23 20 years before impact [-4.022494464588057E+07 -1.302499094687749E+08  1.677303328102947E+07 3.107259947984287E+01 -7.408511345217407E+00  3.903342787139752E+00]';
 
 % Infront Logic
 if SC_POS
-    Infront = 1; % behind is true
+    Infront = 1; % behind is positive
 else
-    Infront = -1; % infront is false
+    Infront = -1;
 end
 
 % Allocating IC and Parameters
 rA0 = AsteroidIC(1:3, 1);
 vA0 = AsteroidIC(4:6, 1);
+
 
 params = {Thrust, Array_Num, Num_SC, dt, ...
     mass_fuel_sc, mass_sc, Isp, M_A, Asteroid_Radius, Standoff_Distance, ... 
@@ -112,7 +122,7 @@ title('B-Plane Deflection');
 % Output Semi Major Axis, total ΔV, and operating time
 delta_a_m = (a(end) - a(1));
 fprintf('Change in semi-major axis: %.3f km\n', delta_a_m);
-fprintf('Total Position Difference Distance at the end of Sim: %.3f km\n', Delta_R);
+% fprintf('Total Position Difference Distance at the end of Sim: %.3f km\n', Delta_R);
 fprintf('Total Deflection (zeta): %.3f km\n', z(end,1));
 fprintf('Total ΔV imparted: %.3f mm/s\n', DV_total*1e6);
 fprintf('Total Change in Period (ΔT): %.3f s\n', Delta_T(end,1));

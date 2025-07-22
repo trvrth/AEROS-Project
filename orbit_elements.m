@@ -1,6 +1,6 @@
 function [a_scalar, e_scalar, e_vec] = orbit_elements(r, v, mu)
     h = cross(r, v);
-    r_norm_scalar = norm(r); % norm function did not work for this
+    r_norm_scalar = norm(r);
     v_norm_scalar = norm(v);
     
     % To find Semi-Major Axis
