@@ -1,4 +1,4 @@
-function state_vec = get_horizons_rv(target_id, stop_date, step_size)
+function state_vec = get_horizons_rv(target_id, start_date, stop_date, step_size)
 % GET_HORIZONS_RV Queries JPL Horizons and returns the final [x y z vx vy vz] vector.
 %
 % Inputs:
@@ -10,7 +10,7 @@ function state_vec = get_horizons_rv(target_id, stop_date, step_size)
 % Output:
 %   state_vec  - 1x6 vector: [x y z vx vy vz] in [km, km/s]
 
-start_date = stop_date - days(1);
+% start_date = stop_date - days(1);
 stop_date = datestr(stop_date, 'yyyy-mm-ddTHH:MM:SS');
 start_date = datestr(start_date, 'yyyy-mm-ddTHH:MM:SS');
 
