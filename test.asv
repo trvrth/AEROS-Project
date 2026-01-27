@@ -1,0 +1,3 @@
+RV = get_horizons_rv('-937019', '2032-07-06', '2032-07-07', '1d');
+disp('r0 (km):'); disp(r);
+disp('v0 (km/s):'); disp(v);

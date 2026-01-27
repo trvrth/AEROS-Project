@@ -1,0 +1,23 @@
+mu = 1.32712e11;       % km^3/s^2
+[a0, e0, e_vec] = orbit_elements([-9.017346132883599E+07;  2.016178218722010E+08; -4.100642351379222E+07;],[-1.746107974315678E+01; -1.838532402937617E+01;  1.001923496246683E+00], mu);
+DV = 1.66e-5;          % km/s
+v0 = sqrt(mu / a0);    % Orbital speed
+delta_a = 2/(sqrt(1-e0^2))*sqrt(a0^3/mu)*((1+e0*cosd(100.11))*33.236/1e6);
+
+T0 = 2 * pi * sqrt(a0^3 / mu);  % Original period in seconds
+a1 = a0 + delta_a;
+T1 = 2 * pi * sqrt(a1^3 / mu);  % New period
+
+delta_T = T1 - T0;  % Change in seconds
+
+b = real(a0 * sqrt(1 - e0^2)); % semi-minor axis
+x = (a0^2 - b^2);
+C = real(pi * (a0 + b) * (1 + (3*x^2)/(10 + sqrt(4-(3*x^2)))));
+
+total_time = 151056000; %
+
+delta_r = 1.5 * C * (delta_a)/a0 * /T0;
+
+fprintf('Δr = %.3f km\n', delta_r);
+fprintf('Δa = %.3f km\n', delta_a);
+fprintf('ΔT = %.3f seconds\n', delta_T);

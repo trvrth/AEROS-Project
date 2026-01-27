@@ -1,5 +1,4 @@
-
-function [t_all, r_all, v_all, delr, delT, Z_all, DV_tot, a_all, e_all] = ODE_Handle(rA0, vA0, thrust, array_num, sc_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta, orbit_window, infront)
+function [t_all, r_all, v_all, delr, delT, Z_all, DV_tot, a_all, e_all] = ODE_Handle_GUI(rA0, vA0, thrust, array_num, sc_num, dt, mass_fuel, mass_sc, Isp, M_A, R_A, d, theta, orbit_window, infront, THRUST_ON)
 
 % rA0 and vA0 come from the inital data
 % Thrust will stay constant for now
@@ -16,7 +15,27 @@ function [t_all, r_all, v_all, delr, delT, Z_all, DV_tot, a_all, e_all] = ODE_Ha
 % orbit_window is the window in the orbit that the thrusters will turn on, 0 is perihelion and 180 is aphelion. This number is in degrees.
 % infront is a sign variable to indicate whether the spacecraft is infront of or behind the asteroid's motion, changes sign accordingly within propagate functions
 
-global THRUST_ON SIM_MODE SIM_TIME
+% fprintf("\n--- PYTHON INPUT SANITY CHECK ---\n");
+% 
+% disp(rA0)
+% disp(vA0)
+% disp(thrust)
+% disp(array_num)
+% disp(sc_num)
+% disp(dt)
+% disp(mass_fuel)
+% disp(mass_sc)
+% disp(Isp)
+% disp(M_A)
+% disp(R_A)
+% disp(d)
+% disp(theta)
+% disp(orbit_window)
+% disp(infront)
+% disp(THRUST_ON)
+% 
+% fprintf("--- END INPUT CHECK ---\n\n");
+
 
 mu = 1.32712E+11; % km^3/s^2
 tol = 1e-12; % acceptable tolerance
@@ -31,11 +50,12 @@ mdot = thrust*2 / (g * Isp); % mass flow rate of the ion thruster per space craf
 
 % Changes the Mode of Simulation
 end_condition_num = 0;
-if SIM_MODE == 2
-    end_condition_num = SIM_TIME;  % simulate for a specific time
-else
-    disp("SIM_MODE is until fuel runs out!");
-end
+% if SIM_MODE == 2
+%     end_condition_num = SIM_TIME;  % simulate for a specific time
+% else
+%     disp("SIM_MODE is until fuel runs out!");
+% end
+SIM_MODE = 1; % until fuels run out
 
 % Ion Beam coupling efficiency
 % F = IBFraction(R_A, d, theta); commented out for now to verify
@@ -53,13 +73,15 @@ delT = zeros(chunkSize, 1);
 Z_all = zeros(chunkSize, 1);
 
 %Calculate starting o_angle
+fprintf("before orbit")
+disp(rA0)
+disp(vA0)
+
 [a0_scalar, e0_scalar, e0_vec] = orbit_elements(rA0, vA0, mu);
 
 e_unit = e0_vec/norm(e0_vec);
 r_unit = rA0/norm(rA0);
-
-o_angle = acos((dot(e_unit,r_unit)));   
-o_angle = rad2deg(o_angle);
+o_angle = acosd((dot(e_unit,r_unit)));
 
 % Set up for Displacement Calculations
 T = 2 * pi * sqrt(a0_scalar^3/mu); % period of undeflected orbit
@@ -82,29 +104,29 @@ x = (a0_scalar^2 - b^2);
 C = real(pi * (a0_scalar + b) * (1 + (3*x^2)/(10 + sqrt(4-(3*x^2))))); % circumference of undeflected orbit
 
 % Setup for numerical sweep
-    thetas = linspace(-pi, pi, 100000); % true anomaly in radians
-    dtheta = thetas(2) - thetas(1);
-    burn_angle = deg2rad(angle_window);
+thetas = linspace(-pi, pi, 100000); % true anomaly in radians
+dtheta = thetas(2) - thetas(1);
+burn_angle = deg2rad(angle_window);
 
-    % Integrate dt over orbit
-    burn_time = 0;
+% Integrate dt over orbit
+burn_time = 0;
 
-    for i = 1:length(thetas)
-        th = thetas(i);
-        r = a0_scalar * (1 - e0_scalar^2) / (1 + e0_scalar * cos(th));
-        h = sqrt(mu * a0_scalar * (1 - e0_scalar^2));
-        v = h / r;
+for i = 1:length(thetas)
+    th = thetas(i);
+    r = a0_scalar * (1 - e0_scalar^2) / (1 + e0_scalar * cos(th));
+    h = sqrt(mu * a0_scalar * (1 - e0_scalar^2));
+    v = h / r;
 
-        dt_orbit = (r^2 / h) * dtheta;  % dt = r^2 / h * dtheta  [from orbital mechanics]
+    dt_orbit = (r^2 / h) * dtheta;  % dt = r^2 / h * dtheta  [from orbital mechanics]
 
-        if abs(wrapToPi(th)) <= burn_angle  % within burn window
-            burn_time = burn_time + dt_orbit;
-        end
+    if abs(wrapToPi(th)) <= burn_angle  % within burn window
+        burn_time = burn_time + dt_orbit;
     end
+end
 
-    fuel_burn_per_orbit = burn_time * mdot;
-    N_orbits = mass_fuel / fuel_burn_per_orbit;
-    D_time = N_orbits * T;
+fuel_burn_per_orbit = burn_time * mdot;
+N_orbits = mass_fuel / fuel_burn_per_orbit;
+D_time = N_orbits * T;
 
 % % B-Plane Deflection Set up
 %D_time = 277689600; %time until it hits earth from arrival date 7/6/2032 -> 275721360, 
@@ -130,18 +152,33 @@ T_HCI_B = [x_hat'; y_hat'; z_hat'];
 V_E_B = T_HCI_B * V_E;
 V_E_B_xz = sqrt((V_E_B(1,1)^2) + (V_E_B(3,1)^2));
 
+THRUST_ON = 1;
+
+fprintf("before loop")
+disp(rA0)
+disp(vA0)
+
 % --- Start of the Propagation simulation ---
 while SIM_ON
 
-    % fprintf('Time: %.2f days | Fuel left: %.2f kg | Z = %.2f km\n', t_tot/86400, mass_fuel, Z_total);
-    % fprintf('Angle to perihelion: %.2f°\n', o_angle);
-   
+    %fprintf('Time: %.2f days | Fuel left: %.2f kg | Z = %.2f km\n', t_tot/86400, mass_fuel, Z_total);
+    %fprintf('Angle to perihelion: %.2f\n', o_angle);
+    %fprintf('Fuel left: %.2f kg', mass_fuel);
+
     % Checks angle and applies thrust only at the angle provided
     if THRUST_ON && o_angle <= angle_window
+        
+        fprintf("before propagate")
+        disp(rA0)
+        disp(vA0)
+        disp([rA0; vA0])
+
+        rA0 = rA0'; % significant DEBUG process to get here
+        vA0 = vA0';
 
         [~, RV] = ode45(@(t, y) propagate_WT(t, y, mu, total_thrust, M_A, F, mass_sc*sc_num, d, infront), [0 dt], [rA0; vA0], options);
         % fprintf('thrust applied!');
-       
+        
 
         % Updating Mass of the Space Craft and the Fuel
         fuel_used = mdot * dt;
@@ -156,13 +193,13 @@ while SIM_ON
         fuel_used = mdot * dt_actual;
         mass_fuel = mass_fuel - fuel_used;
         mass_sc = mass_sc - fuel_used; 
-        
+
         if mass_fuel <= 0
             fprintf('Fuel exhausted\n');
-            THRUST_ON = false;  % disables thrust globally
+            THRUST_ON = 0;  % disables thrust globally
         end
 
-        % fprintf('Fuel left: %.2f\n', mass_fuel);
+        %fprintf('Fuel left: %.2f\n', mass_fuel);
 
         total_thrust_time = total_thrust_time + dt_actual;
 
@@ -176,8 +213,9 @@ while SIM_ON
     end
 
     % Updating State
-	rA0 = RV(end,1:3)';
-	vA0 = RV(end,4:6)';
+    fprintf('after propagte')
+	rA0 = RV(end,1:3)'
+	vA0 = RV(end,4:6)'
 
     t_tot = t_tot + dt_actual; % might need to come back to this for orbit window
 
@@ -197,15 +235,18 @@ while SIM_ON
 
     t_all(step,:) =  t_tot; % time steps
 
+    % fprintf("DEBUG: rA0 = %.3f, vA0 = %.3f\n", rA0, vA0)
+
     [a_step, e_step, e_vec] = orbit_elements(rA0, vA0, mu);
     a_all(step,:) = a_step;
     e_all(step,:) = e_step;
-    
+
     % This updates the angle of the orbit
     r_vec = r_all(step, :)';
-    e_unit = e_vec/norm(e_vec);
-    r_unit = r_vec/norm(r_vec);
-    o_angle = acosd((dot(e_unit,r_unit))); 
+    e_unit = e_vec / norm(e_vec);
+    r_unit = r_vec / norm(r_vec);
+    o_angle = acosd((dot(e_unit,r_unit)));
+
 
     af_step = a_step;
     dela_step = af_step - a0_scalar;
@@ -219,11 +260,11 @@ while SIM_ON
     Z_total = Delta_T_total*(dt_actual/T)*V_E_B_xz;
     Z_all(step) = Z_accumulated + Z_total;
     Z_accumulated = Z_all(step,:);
-    % fprintf('B-Plane Deflection: %.3f km\n', Z_all(step));
+    %fprintf('B-Plane Deflection: %.3f km\n', Z_accumulated);
 
     % Updating Step
     step = step + 1;
-   
+
     % Sim runs until fuel runs out
     if SIM_MODE == 1
         if (mass_fuel <= 0)
@@ -232,15 +273,15 @@ while SIM_ON
     end
 
     % Sim runs until time runs out
-    if SIM_MODE == 2
- 
-        if t_tot > end_condition_num
-            disp("sim ending b/c of time constraint")
-            SIM_ON = false;
-        end
+    % if SIM_MODE == 2
+    % 
+    %     if t_tot > end_condition_num
+    %         disp("sim ending b/c of time constraint")
+    %         SIM_ON = false;
+    %     end
+    % 
+    % end
 
-    end
-    
     % if Z_all(end) >= 7370
     %     disp("sim ending b/c deflection reached")
     %     fprintf('B-Plane Deflection: %.3f km\n', Z_all(end));
@@ -259,6 +300,12 @@ while SIM_ON
     fprintf('Initial mass_sc: %.2f kg\n', mass_sc);
     first_loop = false;
     end
+    
+    if step == 300
+        SIM_ON =0;
+    end
+
+    % SIM_ON = 0;
 
 end
 
@@ -277,10 +324,12 @@ delr = delr_step * t_all(end,1);
 % Find total ΔV imparted on asteroid
 DV_tot = i_total / (M_A);
 
+
 % D_remaining = max(631152000 - t_tot, 0);
 % Z_total = delT(end)*(D_remaining/T)*V_E_B_xz;
 % fprintf('B-Plane Deflection Coasting END: %.3f km\n', Z_total);
 
 % % Verification calculation of max ideal delta V (Print Out)
+fprintf("Total Zeta Deflection: %.3f \n", Z_all(end));
 fprintf("Total Thrust Time (days): %.3f \n",  total_thrust_time/86400);
 return

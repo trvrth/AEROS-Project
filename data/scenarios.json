@@ -1,0 +1,34 @@
+{
+    "Test 1": {
+        "profiles": {
+            "asteroid": "2024 PDC25",
+            "thruster": "Next-C Ion Thruster",
+            "spacecraft": "3 Array and 2 Craft"
+        },
+        "asteroid_data": {
+            "mass": "6410000000.0",
+            "radius": "75",
+            "horizons_id": "2024 PDC25",
+            "h_start": "2032-07-06",
+            "h_stop": "2032-07-07",
+            "h_step": "1d"
+        },
+        "thruster_data": {
+            "thrust": "0.235",
+            "Isp": "4178",
+            "theta": "5"
+        },
+        "spacecraft_data": {
+            "array_num": "3",
+            "sc_num": "2",
+            "mass_fuel": "2203.0",
+            "mass_sc": "5867.0"
+        },
+        "mission_data": {
+            "dt": "3600",
+            "standoff": "1000",
+            "orbit_window": "180",
+            "infront": "1"
+        }
+    }
+}

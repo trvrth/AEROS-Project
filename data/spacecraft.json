@@ -1,0 +1,14 @@
+{
+    "Single Array and Craft": {
+        "array_num": 1,
+        "sc_num": 1,
+        "mass_fuel": 2203.0,
+        "mass_sc": 5867.0
+    },
+    "3 Array and 2 Craft": {
+        "array_num": 3,
+        "sc_num": 2,
+        "mass_fuel": 2203.0,
+        "mass_sc": 5867.0
+    }
+}

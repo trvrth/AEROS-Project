@@ -1,0 +1,12 @@
+{
+    "Next-C Ion Thruster": {
+        "thrust": 0.235,
+        "Isp": 4178,
+        "Beam Divergence": 5
+    },
+    "T-220HT": {
+        "thrust": 0.75,
+        "Isp": 2500.0,
+        "Beam Divergence": 28.0
+    }
+}
