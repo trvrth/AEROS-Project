@@ -139,12 +139,7 @@ V_E_B_xz = sqrt((V_E_B(1,1)^2) + (V_E_B(3,1)^2));
 %POWER HANDLING VARIABLES (reference top of code for more info)
 P0 = 6853; %Watts, reference value (max throttle power)
 V0 = 1800; %Volts
-P_sc = 2000; %Volts
 syms ib;
-
-c1 = ; c2 = ; c3 = ; %edit!
-
-
 % --- Start of the Propagation simulation ---
 while SIM_ON
 
@@ -156,9 +151,9 @@ while SIM_ON
     
     a1 = 1.4229; a2 = 0.6139; a3 = 0.0038; a4 = -0.2619; a5 = 0.0797;
 
-    P_rel = 1/(r_AU^2) * ((a1 + a2*r_AU^-1 + a3*r_AU^-2)/(1 + a4*r_AU + a5*r_AU^2));
+    P_rel = 1/(r_AU^2) * ((a1 + a2*r_AU^-1 + a3*r_AU^-2)/(1 + a4*r_AU + a5*R^2));
     
-    V_rel = ((a1 + a2*r_AU^-1 + a3*r_AU^-2)/(1 + a4*r_AU + a5*r_AU^2)); % b = a if b not given
+    V_rel = ((a1 + a2*r_AU^-1 + a3*r_AU^-2)/(1 + a4*r_AU + a5*R^2)); % b = a if b not given
 
     P_aval = P0 * P_rel * array_num;
 
@@ -166,11 +161,11 @@ while SIM_ON
 
     P_in_aval = (P_aval - P_sc)/(thrust_num*2); % thruster pair (one forward and other one backwards  to stay stationary)
     
-    I_B = solve(c1 + c2*ib - 0.0915*ib^2 == mdot/2);
+    I_B = solve(c1 + c2*ib - 0.0915*ib^2 == mdot);
 
     Gamma = 0.987 * 0.018*I_B;
 
-    F_thrust = C_F * Gamma * I_B * sqrt(V_rel); 
+    F_thrust = C_F * Gamma * I_B * sqrt(V_rel);
 
 
     % Checks angle and applies thrust only at the angle provided
