@@ -142,7 +142,29 @@ V0 = 1800; %Volts
 P_sc = 2000; %Volts
 syms ib;
 
-c1 = ; c2 = ; c3 = ; %edit!
+% NEXT PM Thruster - High Thrust Boundary (Table B.3-1)
+% Coefficients: [1, P0^1, P0^2, P0^3, P0^4]
+thrust_coeffs = [1.19388817e-02,  1.60989424e-02,  1.14181412e-02, ...
+                -2.04053417e-03,  1.01855017e-04];
+
+mdot_coeffs   = [2.75956482e-06, -1.71102132e-06,  1.21670237e-06, ...
+                -2.07253445e-07,  1.10213671e-08];
+
+% High Isp boundary (alternative test)
+thrust_coeffs_hiIsp = [3.68945763e-03,  4.05432510e-02, -7.91621814e-03, ...
+                        1.72548416e-03, -1.11563126e-04];
+
+mdot_coeffs_hiIsp   = [2.22052155e-06, -1.80919262e-07,  2.77715756e-08, ...
+                        2.98873982e-08, -2.91399146e-09];
+
+% Physical constants
+% m_Xe = 2.1801e-25;  % kg, Xenon ion mass
+% e_charge = 1.602e-19;  % C
+
+% C_F from: F = eta_d * sqrt(2 * m_Xe / e) * I_B * sqrt(V_b)
+% C_F = sqrt(2 * m_Xe / e_charge);  % ≈ 1.65e-3
+
+% c1 = ; c2 = ; c3 = ; %edit!
 
 
 % --- Start of the Propagation simulation ---
@@ -152,25 +174,54 @@ while SIM_ON
     % fprintf('Angle to perihelion: %.2f°\n', o_angle);
     
     % POWER HANDLING
-    r_AU = vecnorm(rA0)/(1.496e8);
+    r_AU = norm(rA0)/(1.496e8);
     
     a1 = 1.4229; a2 = 0.6139; a3 = 0.0038; a4 = -0.2619; a5 = 0.0797;
 
-    P_rel = 1/(r_AU^2) * ((a1 + a2*r_AU^-1 + a3*r_AU^-2)/(1 + a4*r_AU + a5*r_AU^2));
-    
     V_rel = ((a1 + a2*r_AU^-1 + a3*r_AU^-2)/(1 + a4*r_AU + a5*r_AU^2)); % b = a if b not given
 
-    P_aval = P0 * P_rel * array_num;
+    P_rel = 1/(r_AU^2) * V_rel;
 
-    V_aval = V0 * V_rel * array_num;
+    P_aval = P0 * P_rel * array_num; % W, total available power
 
-    P_in_aval = (P_aval - P_sc)/(thrust_num*2); % thruster pair (one forward and other one backwards  to stay stationary)
+    V_aval = V0 * V_rel * array_num; % V, avaiable beam Voltage
+
+    P_in_aval = (P_aval - P_sc)/(thrust_num*2); % thruster pair (one forward and other one backwards to stay stationary)
     
-    I_B = solve(c1 + c2*ib - 0.0915*ib^2 == mdot/2);
+    % I_B = solve(c1 + c2*ib - 0.0915*ib^2 == mdot/2);
+    % 
+    % V_beam = P_in_aval / I_B; %actual beam voltage needed
+    % 
+    % if V_beam > V_aval
+    %     V_beam = V_aval;
+    %     I_B = P_in_aval / V_aval;
+    % end
+    % 
+    % % Gamma = divergence efficiency * utilization efficiency * I_B
+    % Gamma = 0.987 * 0.018 * I_B;
+    % 
+    % F_thrust = C_F * Gamma * sqrt(I_B * P_in_aval); % N, per thruster
+    % 
+    % total_thrust = F_thrust * thrust_num * sc_num / 1000 ; % kN
 
-    Gamma = 0.987 * 0.018*I_B;
+     % Power available per thruster
+    P0_kW = P_in_aval / 1000; %kW
 
-    F_thrust = C_F * Gamma * I_B * sqrt(V_rel); 
+    % Clamp to valid throttle table range (TL01-TL40)
+    P0_min = 0.545; P0_max = 6.853;  % kW, from table
+    if P0_kW < P0_min
+        warning('P0 = %.3f kW below min throttle level', P0_kW);
+        P0_kW = P0_min;
+    elseif P0_kW > P0_max
+        P0_kW = P0_max;
+    end
+
+    % Evaluate polynomial fits
+    F_thrust = polyval(flip(thrust_coeffs), P0_kW);  % N, per thruster
+    mdot     = polyval(flip(mdot_coeffs),   P0_kW) * thrust_num*2;  % kg/s, per thruster
+
+    % Scale to full mission thrust
+    total_thrust = F_thrust * thrust_num * sc_num / 1000;  % kN
 
 
     % Checks angle and applies thrust only at the angle provided
@@ -317,6 +368,7 @@ DV_tot = i_total / (M_A);
 % D_remaining = max(631152000 - t_tot, 0);
 % Z_total = delT(end)*(D_remaining/T)*V_E_B_xz;
 % fprintf('B-Plane Deflection Coasting END: %.3f km\n', Z_total);
+fprintf('Remaining Fuel %.3f kg\n', mass_fuel);
 
 % % Verification calculation of max ideal delta V (Print Out)
 fprintf("Total Thrust Time (days): %.3f \n",  total_thrust_time/86400);

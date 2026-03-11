@@ -19,7 +19,7 @@
             R_A = 75.0;
             d = 1000.0;
             theta = 5.0;
-            orbit_win = 90.0;
+            orbit_win = 180.0;
             infront = 1.0;
             
             disp('BATCH: Calling ODE_Handle_GUI with these inputs:');
